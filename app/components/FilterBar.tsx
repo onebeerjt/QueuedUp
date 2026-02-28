@@ -38,6 +38,8 @@ export default function FilterBar({
     () => SORT_OPTIONS.find((option) => option.value === sortBy)?.label ?? 'Best Match',
     [sortBy]
   );
+  const paidServices = useMemo(() => SERVICES.filter((service) => !FREE_WITH_ADS.has(service.id)), []);
+  const freeServices = useMemo(() => SERVICES.filter((service) => FREE_WITH_ADS.has(service.id)), []);
 
   return (
     <header className="filterBar">
@@ -52,44 +54,92 @@ export default function FilterBar({
       </div>
 
       <div className="filterRow2">
-        <div className="servicePills" role="group" aria-label="Streaming service filters">
-          {SERVICES.map((service) => {
-            const active = activeServices.includes(service.id);
-            return (
-              <button
-                key={service.id}
-                type="button"
-                className={`servicePill ${active ? 'active' : ''}`}
-                onClick={() => onToggleService(service.id)}
-                title={service.name}
-                aria-label={service.name}
-                style={
-                  active
-                    ? {
-                        borderColor: service.color,
-                        backgroundColor: `${service.color}1f`
-                      }
-                    : undefined
-                }
-              >
-                <img
-                  src={service.logo}
-                  alt=""
-                  aria-hidden="true"
-                  className="servicePillLogo"
-                  onError={(event) => {
-                    event.currentTarget.style.display = 'none';
-                    const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
-                    if (sibling) {
-                      sibling.style.display = 'inline-flex';
+        <div className="serviceRail">
+          <div className="serviceSection">
+            <span className="serviceSectionLabel">Select</span>
+            <div className="servicePills" role="group" aria-label="Streaming service filters">
+              {paidServices.map((service) => {
+                const active = activeServices.includes(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    className={`servicePill iconOnly ${active ? 'active' : ''}`}
+                    onClick={() => onToggleService(service.id)}
+                    title={service.name}
+                    aria-label={service.name}
+                    style={
+                      active
+                        ? {
+                            borderColor: service.color,
+                            backgroundColor: `${service.color}1f`
+                          }
+                        : undefined
                     }
-                  }}
-                />
-                <span className="servicePillFallback">{service.name.slice(0, 1).toUpperCase()}</span>
-                {FREE_WITH_ADS.has(service.id) ? <span className="freeWithAds">(free w/ ads)</span> : null}
-              </button>
-            );
-          })}
+                  >
+                    <img
+                      src={service.logo}
+                      alt=""
+                      aria-hidden="true"
+                      className="servicePillLogo"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (sibling) {
+                          sibling.style.display = 'inline-flex';
+                        }
+                      }}
+                    />
+                    <span className="servicePillFallback">{service.name.slice(0, 1).toUpperCase()}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="serviceSection freeGroup">
+            <span className="serviceSectionLabel">Free Options</span>
+            <div className="servicePills" role="group" aria-label="Free streaming service filters">
+              {freeServices.map((service) => {
+                const active = activeServices.includes(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    className={`servicePill ${active ? 'active' : ''}`}
+                    onClick={() => onToggleService(service.id)}
+                    title={service.name}
+                    aria-label={service.name}
+                    style={
+                      active
+                        ? {
+                            borderColor: service.color,
+                            backgroundColor: `${service.color}1f`
+                          }
+                        : undefined
+                    }
+                  >
+                    <img
+                      src={service.logo}
+                      alt=""
+                      aria-hidden="true"
+                      className="servicePillLogo"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (sibling) {
+                          sibling.style.display = 'inline-flex';
+                        }
+                      }}
+                    />
+                    <span className="servicePillFallback">{service.name.slice(0, 1).toUpperCase()}</span>
+                    <span className="freeWithAds">Free w/ ads</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <button type="button" className="tonightButton" onClick={onTonight}>
             ⚡ Tonight
           </button>

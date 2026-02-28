@@ -66,6 +66,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   let watchmodeId: number | null = null;
   try {
     watchmodeId = await resolveWatchmodeTitleId({
+      tmdbId: tmdbMatch.id,
       tmdbTitle: tmdbMatch.title,
       originalTitle: title,
       year: tmdbYear,

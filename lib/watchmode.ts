@@ -1,5 +1,6 @@
 interface WatchmodeSearchResult {
-  id: number;
+  id?: number;
+  title_id?: number;
   name: string;
   year?: number;
   type?: string;
@@ -100,21 +101,27 @@ function scoreCandidate(
   return score;
 }
 
+function extractWatchmodeId(result: WatchmodeSearchResult | undefined): number | null {
+  if (!result) {
+    return null;
+  }
+  const candidate = result.id ?? result.title_id;
+  return typeof candidate === 'number' ? candidate : null;
+}
+
 export async function searchWatchmodeTitle(title: string, year?: number): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchResponse>('/autocomplete-search/', {
-    search_value: title,
-    search_type: '2'
+    search_value: title
   });
 
   const ranked = [...(data.title_results ?? [])].sort(
     (a, b) => scoreCandidate(title, year, b) - scoreCandidate(title, year, a)
   );
-  const match = ranked[0];
-  return match?.id ?? null;
+  return extractWatchmodeId(ranked[0]);
 }
 
 async function searchWatchmodeByField(
-  searchField: 'imdb_id' | 'name',
+  searchField: 'imdb_id' | 'tmdb_id' | 'name',
   searchValue: string
 ): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/search/', {
@@ -124,16 +131,28 @@ async function searchWatchmodeByField(
   });
 
   const results = data.title_results ?? data.results ?? [];
-  return results[0]?.id ?? null;
+  return extractWatchmodeId(results[0]);
 }
 
 export async function resolveWatchmodeTitleId(params: {
+  tmdbId?: number;
   tmdbTitle: string;
   originalTitle: string;
   year?: number;
   imdbId?: string | null;
 }): Promise<number | null> {
-  const { tmdbTitle, originalTitle, year, imdbId } = params;
+  const { tmdbId, tmdbTitle, originalTitle, year, imdbId } = params;
+
+  if (tmdbId) {
+    try {
+      const byTmdb = await searchWatchmodeByField('tmdb_id', String(tmdbId));
+      if (byTmdb) {
+        return byTmdb;
+      }
+    } catch {
+      // Fallback to additional strategies.
+    }
+  }
 
   if (imdbId) {
     try {
@@ -143,6 +162,21 @@ export async function resolveWatchmodeTitleId(params: {
       }
     } catch {
       // Fallback to title-based matching below.
+    }
+  }
+
+  const nameAttempts = new Set<string>([tmdbTitle, originalTitle]);
+  for (const attempt of nameAttempts) {
+    if (!attempt.trim()) {
+      continue;
+    }
+    try {
+      const byName = await searchWatchmodeByField('name', attempt);
+      if (byName) {
+        return byName;
+      }
+    } catch {
+      // Continue to autocomplete fallback.
     }
   }
 
@@ -174,22 +208,15 @@ export async function getWatchmodeSources(titleId: number): Promise<WatchmodeSou
     regions: 'US'
   });
 
-  const allowedTypes = new Set(['sub', 'free', 'tv_everywhere', 'tve', 'free_with_ads', 'unknown']);
+  const blockedTypes = new Set(['buy', 'rent']);
 
   return data.sources
     .filter((source) => {
       if (!source.web_url) {
         return false;
       }
-      const region = (source.region ?? '').toUpperCase();
-      if (region && region !== 'US') {
-        return false;
-      }
       const type = (source.type ?? '').toLowerCase();
-      if (!type) {
-        return true;
-      }
-      return allowedTypes.has(type);
+      return !blockedTypes.has(type);
     })
     .map((source) => ({
       name: source.name,

@@ -238,6 +238,33 @@ p {
   padding-bottom: 2px;
 }
 
+.serviceRail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+.serviceSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.serviceSectionLabel {
+  color: #9a97a8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.freeGroup {
+  border-left: 1px solid #2f2f38;
+  padding-left: 12px;
+}
+
 .servicePill,
 .tonightButton {
   border-radius: 999px;
@@ -259,6 +286,12 @@ p {
   align-items: center;
   gap: 7px;
   min-height: 36px;
+}
+
+.servicePill.iconOnly {
+  width: 38px;
+  padding: 8px;
+  justify-content: center;
 }
 
 .servicePillLogo {
@@ -284,9 +317,9 @@ p {
 .freeWithAds {
   font-size: 10px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.01em;
   color: #bdbbc9;
+  white-space: nowrap;
 }
 
 .tonightButton {
@@ -518,6 +551,10 @@ p {
   .filterRow2 {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .serviceRail {
+    width: 100%;
   }
 
   .sortWrap {
