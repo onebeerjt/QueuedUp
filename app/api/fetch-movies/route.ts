@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 
 import { SERVICES, getServiceLogoPath, normalizeServiceName } from '@/lib/services';
-import { buildPosterUrl, getTmdbGenreMap, getTmdbMovieDetails, searchTmdbMovie } from '@/lib/tmdb';
+import {
+  buildPosterUrl,
+  getTmdbGenreMap,
+  getTmdbMovieDetails,
+  getTmdbWatchProviders,
+  searchTmdbMovie
+} from '@/lib/tmdb';
 import { processInBatches, slugify } from '@/lib/utils';
 import { getWatchmodeSources, resolveWatchmodeTitleId } from '@/lib/watchmode';
 import type { Movie, StreamingSource } from '@/types/movie';
@@ -66,7 +72,6 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   let watchmodeId: number | null = null;
   try {
     watchmodeId = await resolveWatchmodeTitleId({
-      tmdbId: tmdbMatch.id,
       tmdbTitle: tmdbMatch.title,
       originalTitle: title,
       year: tmdbYear,
@@ -87,6 +92,16 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
       const message = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[watchmode] sources failed for "${tmdbMatch.title}" (${watchmodeId}): ${message}`);
       streamingSources = [];
+    }
+  }
+
+  if (!streamingSources.length) {
+    try {
+      const tmdbProviders = await getTmdbWatchProviders(tmdbMatch.id);
+      streamingSources = toStreamingSources(tmdbProviders);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      console.warn(`[tmdb] watch providers failed for "${tmdbMatch.title}" (${tmdbMatch.id}): ${message}`);
     }
   }
 

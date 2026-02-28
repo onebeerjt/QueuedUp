@@ -135,19 +135,20 @@ function extractWatchmodeId(result: WatchmodeSearchResult | undefined): number |
 }
 
 export async function searchWatchmodeTitle(title: string, year?: number): Promise<number | null> {
-  const data = await watchmodeFetch<WatchmodeSearchResponse>('/autocomplete-search/', {
+  const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/autocomplete-search/', {
     search_value: title,
     search_type: '2'
   });
 
-  const ranked = [...(data.title_results ?? [])].sort(
+  const results = data.title_results ?? data.results ?? [];
+  const ranked = [...results].sort(
     (a, b) => scoreCandidate(title, year, b) - scoreCandidate(title, year, a)
   );
   return extractWatchmodeId(ranked[0]);
 }
 
 async function searchWatchmodeByField(
-  searchField: 'imdb_id' | 'tmdb_id' | 'name',
+  searchField: 'imdb_id' | 'name',
   searchValue: string
 ): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/search/', {
@@ -163,7 +164,6 @@ async function searchWatchmodeByField(
 async function searchWatchmodeByNameRanked(params: {
   title: string;
   year?: number;
-  tmdbId?: number;
   imdbId?: string | null;
 }): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/search/', {
@@ -178,14 +178,9 @@ async function searchWatchmodeByNameRanked(params: {
   }
 
   const ranked = [...results].sort((a, b) => {
-    const aTmdb = coerceNumericId(a.tmdb_id);
-    const bTmdb = coerceNumericId(b.tmdb_id);
-
     const aBoost =
-      (params.tmdbId && aTmdb === params.tmdbId ? 1000 : 0) +
       (params.imdbId && a.imdb_id === params.imdbId ? 900 : 0);
     const bBoost =
-      (params.tmdbId && bTmdb === params.tmdbId ? 1000 : 0) +
       (params.imdbId && b.imdb_id === params.imdbId ? 900 : 0);
 
     return bBoost + scoreCandidate(params.title, params.year, b) - (aBoost + scoreCandidate(params.title, params.year, a));
@@ -195,24 +190,12 @@ async function searchWatchmodeByNameRanked(params: {
 }
 
 export async function resolveWatchmodeTitleId(params: {
-  tmdbId?: number;
   tmdbTitle: string;
   originalTitle: string;
   year?: number;
   imdbId?: string | null;
 }): Promise<number | null> {
-  const { tmdbId, tmdbTitle, originalTitle, year, imdbId } = params;
-
-  if (tmdbId) {
-    try {
-      const byTmdb = await searchWatchmodeByField('tmdb_id', String(tmdbId));
-      if (byTmdb) {
-        return byTmdb;
-      }
-    } catch {
-      // Fallback to additional strategies.
-    }
-  }
+  const { tmdbTitle, originalTitle, year, imdbId } = params;
 
   if (imdbId) {
     try {
@@ -234,7 +217,6 @@ export async function resolveWatchmodeTitleId(params: {
       const byName = await searchWatchmodeByNameRanked({
         title: attempt,
         year,
-        tmdbId,
         imdbId
       });
       if (byName) {

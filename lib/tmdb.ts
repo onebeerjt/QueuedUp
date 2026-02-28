@@ -22,6 +22,22 @@ interface TmdbMovieDetails {
   imdb_id: string | null;
 }
 
+interface TmdbProvider {
+  provider_name: string;
+}
+
+interface TmdbWatchProvidersResponse {
+  results?: Record<
+    string,
+    {
+      link?: string;
+      flatrate?: TmdbProvider[];
+      free?: TmdbProvider[];
+      ads?: TmdbProvider[];
+    }
+  >;
+}
+
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 let genreCache: Map<number, string> | null = null;
 
@@ -63,6 +79,27 @@ export async function getTmdbMovieDetails(id: number): Promise<TmdbMovieDetails>
   return tmdbFetch<TmdbMovieDetails>(`/movie/${id}`, {
     language: 'en-US'
   });
+}
+
+export async function getTmdbWatchProviders(
+  id: number
+): Promise<Array<{ name: string; web_url: string }>> {
+  const data = await tmdbFetch<TmdbWatchProvidersResponse>(`/movie/${id}/watch/providers`);
+  const us = data.results?.US;
+  if (!us) {
+    return [];
+  }
+
+  const link = us.link || '';
+  const providers = [...(us.flatrate ?? []), ...(us.free ?? []), ...(us.ads ?? [])];
+  const unique = new Map<string, { name: string; web_url: string }>();
+  for (const provider of providers) {
+    const key = provider.provider_name.toLowerCase();
+    if (!unique.has(key)) {
+      unique.set(key, { name: provider.provider_name, web_url: link });
+    }
+  }
+  return Array.from(unique.values());
 }
 
 export async function getTmdbGenreMap(): Promise<Map<number, string>> {
