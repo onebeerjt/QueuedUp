@@ -23,7 +23,7 @@ const nameToId: Array<{ id: ServiceId; aliases: string[] }> = [
   { id: 'plex', aliases: ['plex'] },
   { id: 'roku', aliases: ['roku channel', 'roku'] },
   { id: 'pluto', aliases: ['pluto tv', 'pluto'] },
-  { id: 'prime', aliases: ['prime video', 'amazon', 'amazon prime', 'amazon prime video'] },
+  { id: 'prime', aliases: ['prime video', 'amazon prime', 'amazon prime video', 'amazon video'] },
   { id: 'apple', aliases: ['apple tv+', 'apple tv plus', 'apple tv', 'apple'] },
   { id: 'disney', aliases: ['disney+', 'disney plus', 'disney'] },
   { id: 'peacock', aliases: ['peacock'] },

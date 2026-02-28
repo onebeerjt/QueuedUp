@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
 import MovieGrid from '@/app/components/MovieGrid';
+import MovieInlineFocus from '@/app/components/MovieInlineFocus';
 import MovieSpotlight from '@/app/components/MovieSpotlight';
 import PastePanel from '@/app/components/PastePanel';
 import ProgressBar from '@/app/components/ProgressBar';
@@ -12,6 +13,7 @@ import { decodeShareState, encodeShareState } from '@/lib/utils';
 import type { Movie } from '@/types/movie';
 
 type InputMode = 'paste' | 'letterboxd';
+type ViewMode = 'spotlight' | 'inline';
 
 function movieIsAvailable(movie: Movie, activeServices: string[]): boolean {
   if (!activeServices.length) {
@@ -48,6 +50,7 @@ export default function HomePage(): JSX.Element {
   const [progressVisible, setProgressVisible] = useState(false);
   const [toast, setToast] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('spotlight');
 
   const shareLoadedRef = useRef(false);
   const progressTimerRef = useRef<number | null>(null);
@@ -262,7 +265,35 @@ export default function HomePage(): JSX.Element {
 
       <ProgressBar current={progress.current} total={progress.total} visible={progressVisible} />
 
-      {movies.length > 0 ? <MovieSpotlight movie={selectedMovie} unavailable={selectedUnavailable} /> : null}
+      {movies.length > 0 ? (
+        <div className="viewSwitch" role="tablist" aria-label="Layout mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'spotlight'}
+            className={`viewSwitchButton ${viewMode === 'spotlight' ? 'active' : ''}`}
+            onClick={() => setViewMode('spotlight')}
+          >
+            Spotlight
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'inline'}
+            className={`viewSwitchButton ${viewMode === 'inline' ? 'active' : ''}`}
+            onClick={() => setViewMode('inline')}
+          >
+            Inline Expand
+          </button>
+        </div>
+      ) : null}
+
+      {movies.length > 0 && viewMode === 'spotlight' ? (
+        <MovieSpotlight movie={selectedMovie} unavailable={selectedUnavailable} />
+      ) : null}
+      {movies.length > 0 && viewMode === 'inline' ? (
+        <MovieInlineFocus movie={selectedMovie} unavailable={selectedUnavailable} />
+      ) : null}
 
       {movies.length > 0 ? (
         <MovieGrid

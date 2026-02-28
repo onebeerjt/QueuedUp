@@ -28,7 +28,7 @@ function dedupeSources(sources: StreamingSource[]): StreamingSource[] {
   return Array.from(map.values());
 }
 
-function preferredServiceUrl(serviceId: string, title: string): string | null {
+function preferredServiceUrl(serviceId: string, title: string, year?: number): string | null {
   const encoded = encodeURIComponent(title);
   if (serviceId === 'netflix') {
     return `https://www.netflix.com/search?q=${encoded}`;
@@ -40,7 +40,7 @@ function preferredServiceUrl(serviceId: string, title: string): string | null {
     return `https://www.hulu.com/search?q=${encoded}`;
   }
   if (serviceId === 'prime') {
-    return `https://www.amazon.com/s?k=${encoded}&i=instant-video`;
+    return `https://www.amazon.com/s?k=${encoded}&i=instant-video&rh=p_n_subscription_id%3A2512980011`;
   }
   if (serviceId === 'apple') {
     return `https://tv.apple.com/search?term=${encoded}`;
@@ -58,6 +58,10 @@ function preferredServiceUrl(serviceId: string, title: string): string | null {
     return `https://tubitv.com/search/${encoded}`;
   }
   if (serviceId === 'plex') {
+    const slug = slugify(title);
+    if (year) {
+      return `https://watch.plex.tv/movie/${slug}-${year}`;
+    }
     return `https://watch.plex.tv/search?q=${encoded}`;
   }
   if (serviceId === 'pluto') {
@@ -69,7 +73,7 @@ function preferredServiceUrl(serviceId: string, title: string): string | null {
   return null;
 }
 
-function normalizeStreamingUrl(serviceId: string, title: string, rawUrl: string): string {
+function normalizeStreamingUrl(serviceId: string, title: string, rawUrl: string, year?: number): string {
   const serviceUrlMap: Record<string, RegExp> = {
     netflix: /netflix\.com/i,
     hbo: /(max\.com|hbo\.com|hbomax\.com)/i,
@@ -90,21 +94,42 @@ function normalizeStreamingUrl(serviceId: string, title: string, rawUrl: string)
     return rawUrl;
   }
 
-  return preferredServiceUrl(serviceId, title) ?? rawUrl;
+  return preferredServiceUrl(serviceId, title, year) ?? rawUrl;
 }
 
-function toStreamingSources(rawSources: Array<{ name: string; web_url: string }>, movieTitle: string): StreamingSource[] {
+function isPrimeChannelAddon(name: string, url: string): boolean {
+  const signal = `${name} ${url}`.toLowerCase();
+  const patterns = [
+    'channel',
+    'mgm',
+    'starz',
+    'showtime',
+    'amc+',
+    'paramount+',
+    'shudder'
+  ];
+  return patterns.some((token) => signal.includes(token));
+}
+
+function toStreamingSources(
+  rawSources: Array<{ name: string; web_url: string }>,
+  movieTitle: string,
+  movieYear: number
+): StreamingSource[] {
   const filtered = rawSources
     .map((source) => {
       const serviceId = normalizeServiceName(source.name);
       if (!serviceId) {
         return null;
       }
+      if (serviceId === 'prime' && isPrimeChannelAddon(source.name, source.web_url)) {
+        return null;
+      }
 
       const service = SERVICES.find((item) => item.id === serviceId);
       return {
         name: service?.name ?? source.name,
-        web_url: normalizeStreamingUrl(serviceId, movieTitle, source.web_url),
+        web_url: normalizeStreamingUrl(serviceId, movieTitle, source.web_url, movieYear),
         logo: getServiceLogoPath(source.name)
       } satisfies StreamingSource;
     })
@@ -152,7 +177,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   if (watchmodeId) {
     try {
       const sources = await getWatchmodeSources(watchmodeId);
-      streamingSources = toStreamingSources(sources, tmdbMatch.title);
+      streamingSources = toStreamingSources(sources, tmdbMatch.title, tmdbYear ?? 0);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[watchmode] sources failed for "${tmdbMatch.title}" (${watchmodeId}): ${message}`);
@@ -163,7 +188,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   if (!streamingSources.length) {
     try {
       const tmdbProviders = await getTmdbWatchProviders(tmdbMatch.id);
-      streamingSources = toStreamingSources(tmdbProviders, tmdbMatch.title);
+      streamingSources = toStreamingSources(tmdbProviders, tmdbMatch.title, tmdbYear ?? 0);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[tmdb] watch providers failed for "${tmdbMatch.title}" (${tmdbMatch.id}): ${message}`);

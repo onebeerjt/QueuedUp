@@ -379,6 +379,34 @@ p {
   margin-top: 20px;
 }
 
+.viewSwitch {
+  margin-top: 16px;
+  display: inline-flex;
+  gap: 8px;
+  background: #15151d;
+  border: 1px solid #2b2b36;
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.viewSwitchButton {
+  border: 0;
+  background: transparent;
+  color: #b8b5c6;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.viewSwitchButton.active {
+  color: #fff;
+  background: #262536;
+}
+
 .spotlight {
   position: relative;
   margin-top: 20px;
@@ -487,6 +515,47 @@ p {
 .spotlightUnavailable {
   color: #b2afc2;
   font-size: 13px;
+}
+
+.inlineFocus {
+  margin-top: 20px;
+  border-radius: 14px;
+  border: 1px solid #2a2a35;
+  background: linear-gradient(135deg, #111118 0%, #171722 100%);
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 18px;
+  padding: 16px;
+}
+
+.inlineFocusPosterWrap {
+  width: 100%;
+}
+
+.inlineFocusPoster,
+.inlineFocusPosterFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.inlineFocusPosterFallback {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 12px;
+  background: #191922;
+}
+
+.inlineFocusInfo {
+  min-width: 0;
+}
+
+.inlineFocusOverview {
+  color: #dad7e8;
+  line-height: 1.45;
+  margin-bottom: 14px;
 }
 
 .movieGrid {
@@ -751,6 +820,14 @@ p {
   }
 
   .spotlightPosterWrap {
+    width: 140px;
+  }
+
+  .inlineFocus {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineFocusPosterWrap {
     width: 140px;
   }
 }
