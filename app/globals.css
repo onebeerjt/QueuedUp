@@ -1,0 +1,495 @@
+:root {
+  --bg: #0d0d0f;
+  --surface: #18181c;
+  --surface2: #222228;
+  --accent: #a78bfa;
+  --accent2: #7c3aed;
+  --text: #f1f0f5;
+  --muted: #6b6a75;
+  --success: #4ade80;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(1200px 600px at 10% -20%, #26213c 0%, transparent 60%),
+    radial-gradient(900px 500px at 90% -30%, #1b1433 0%, transparent 62%), var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+.page {
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.pastePanel {
+  background: rgba(24, 24, 28, 0.9);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 980px;
+  margin: 40px auto 24px;
+  box-shadow: 0 10px 60px rgba(0, 0, 0, 0.5);
+  transition: transform 180ms ease, opacity 180ms ease, max-height 180ms ease, margin 180ms ease;
+  transform: translateY(0);
+  opacity: 1;
+  max-height: 900px;
+}
+
+.pastePanel.hidden {
+  transform: translateY(-20px);
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  margin: 0 auto;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.panelTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.panelTab {
+  border: 0;
+  background: var(--surface2);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.panelTab.active {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.titleTextarea {
+  width: 100%;
+  resize: vertical;
+  border: 0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #111;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  outline: none;
+}
+
+.urlInput {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #111;
+  color: var(--text);
+  outline: none;
+}
+
+.panelHelper {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.panelMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.primaryButton {
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--text);
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+
+.primaryButton:hover {
+  background: var(--accent2);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.progressWrap {
+  max-width: 980px;
+  margin: 0 auto;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.progressWrap.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.progressTrack {
+  width: 100%;
+  background: #121216;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 12px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width 180ms ease;
+}
+
+.progressLabel {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.filterBar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 16px 0;
+  background: rgba(24, 24, 28, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.filterRow1,
+.filterRow2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.filterRow1 {
+  margin-bottom: 12px;
+}
+
+.countAndShare {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.shareButton {
+  border: 1px solid #2c2c33;
+  background: #191922;
+  color: var(--text);
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.shareButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.servicePills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.servicePill,
+.tonightButton {
+  border-radius: 999px;
+  border: 1px solid #2f2f38;
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 8px 14px;
+  transition: all 180ms ease;
+}
+
+.servicePill.active {
+  color: var(--text);
+}
+
+.tonightButton {
+  color: var(--text);
+  border-color: transparent;
+  background: var(--accent);
+}
+
+.tonightButton:hover {
+  background: var(--accent2);
+}
+
+.sortWrap {
+  position: relative;
+}
+
+.sortTrigger {
+  min-width: 150px;
+  border: 1px solid #2f2f38;
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sortMenu {
+  position: absolute;
+  right: 0;
+  top: 40px;
+  min-width: 170px;
+  border-radius: 10px;
+  background: #1a1a21;
+  border: 1px solid #2f2f38;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.sortOption {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  padding: 10px 12px;
+  transition: background-color 180ms ease;
+}
+
+.sortOption:hover,
+.sortOption.active {
+  background: #262632;
+}
+
+.movieGridWrap {
+  margin-top: 16px;
+}
+
+.movieGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.movieCard {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 2 / 3;
+  background: var(--surface);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.movieCard:hover {
+  transform: scale(1.04);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+}
+
+.movieCard.unavailable {
+  filter: grayscale(60%) brightness(0.4);
+}
+
+.poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.posterFallback {
+  width: 100%;
+  height: 100%;
+  background: #111;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  text-align: center;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent 55%);
+  opacity: 0;
+  transition: opacity 180ms ease;
+  display: flex;
+  align-items: flex-end;
+}
+
+.movieCard:hover .overlay {
+  opacity: 1;
+}
+
+.overlayContent {
+  width: 100%;
+  padding: 12px;
+  transform: translateY(8px);
+  transition: transform 180ms ease, opacity 180ms ease;
+  opacity: 0;
+}
+
+.movieCard:hover .overlayContent {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.overlayContent h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.movieMeta {
+  font-size: 12px;
+  color: #b0afba;
+  margin-bottom: 8px;
+}
+
+.genreRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.genreTag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c7c5d1;
+  background: rgba(45, 45, 58, 0.9);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.overview {
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 10px;
+  color: #d0cfda;
+}
+
+.serviceRow {
+  display: flex;
+  gap: 6px;
+}
+
+.serviceBadge {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.serviceBadge.disabled {
+  pointer-events: none;
+}
+
+.serviceIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  background: rgba(24, 24, 28, 0.94);
+  border: 1px solid #333340;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast .check {
+  color: var(--accent);
+}
+
+@media (min-width: 769px) {
+  .movieGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1025px) {
+  .movieGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1281px) {
+  .movieGrid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .filterRow2 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sortWrap {
+    width: 100%;
+  }
+
+  .sortTrigger {
+    width: 100%;
+  }
+}
