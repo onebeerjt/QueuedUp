@@ -72,7 +72,9 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
       year: tmdbYear,
       imdbId: details.imdb_id
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    console.warn(`[watchmode] resolve failed for "${tmdbMatch.title}": ${message}`);
     watchmodeId = null;
   }
 
@@ -81,7 +83,9 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
     try {
       const sources = await getWatchmodeSources(watchmodeId);
       streamingSources = toStreamingSources(sources);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      console.warn(`[watchmode] sources failed for "${tmdbMatch.title}" (${watchmodeId}): ${message}`);
       streamingSources = [];
     }
   }
