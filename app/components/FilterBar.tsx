@@ -21,6 +21,7 @@ const SORT_OPTIONS = [
   { value: 'year-desc', label: 'Year ↓' },
   { value: 'title-asc', label: 'Title A–Z' }
 ];
+const FREE_WITH_ADS = new Set(['pluto', 'plex', 'tubi', 'roku']);
 
 export default function FilterBar({
   totalCount,
@@ -60,17 +61,19 @@ export default function FilterBar({
                 type="button"
                 className={`servicePill ${active ? 'active' : ''}`}
                 onClick={() => onToggleService(service.id)}
+                title={service.name}
+                aria-label={service.name}
                 style={
                   active
                     ? {
                         borderColor: service.color,
-                        color: service.color,
                         backgroundColor: `${service.color}1f`
                       }
                     : undefined
                 }
               >
-                {service.name}
+                <img src={`/icons/${service.id}.svg`} alt="" aria-hidden="true" className="servicePillLogo" />
+                {FREE_WITH_ADS.has(service.id) ? <span className="freeWithAds">(free w/ ads)</span> : null}
               </button>
             );
           })}
