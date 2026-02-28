@@ -1,34 +1,30 @@
 import ServiceBadge from '@/app/components/ServiceBadge';
 import type { Movie } from '@/types/movie';
 
-interface MovieInlineFocusProps {
-  movie: Movie | null;
+interface MovieRowExpandProps {
+  movie: Movie;
   unavailable: boolean;
 }
 
-export default function MovieInlineFocus({ movie, unavailable }: MovieInlineFocusProps): JSX.Element | null {
-  if (!movie) {
-    return null;
-  }
-
+export default function MovieRowExpand({ movie, unavailable }: MovieRowExpandProps): JSX.Element {
   return (
-    <section className="inlineFocus" aria-live="polite">
-      <div className="inlineFocusPosterWrap">
+    <article className="movieRowExpand" aria-live="polite">
+      <div className="movieRowExpandPosterWrap">
         {movie.poster ? (
-          <img src={movie.poster} alt={movie.title} className="inlineFocusPoster" />
+          <img src={movie.poster} alt={movie.title} className="movieRowExpandPoster" />
         ) : (
-          <div className="inlineFocusPosterFallback">{movie.title}</div>
+          <div className="movieRowExpandPosterFallback">{movie.title}</div>
         )}
       </div>
 
-      <div className="inlineFocusInfo">
-        <p className="spotlightEyebrow">Expanded preview</p>
-        <h2>{movie.title}</h2>
-        <p className="spotlightMeta">
+      <div className="movieRowExpandInfo">
+        <p className="spotlightEyebrow">Expanded in row</p>
+        <h3>{movie.title}</h3>
+        <p className="movieRowExpandMeta">
           {movie.year || 'Unknown'} · {movie.runtime ? `${movie.runtime}m` : 'N/A'} · IMDb {movie.imdbRating || 'N/A'}
         </p>
 
-        <div className="genreRow spotlightGenres">
+        <div className="genreRow">
           {movie.genres.slice(0, 4).map((genre) => (
             <span key={genre} className="genreTag">
               {genre}
@@ -36,7 +32,7 @@ export default function MovieInlineFocus({ movie, unavailable }: MovieInlineFocu
           ))}
         </div>
 
-        <p className="inlineFocusOverview">{movie.overview}</p>
+        <p className="movieRowExpandOverview">{movie.overview}</p>
 
         {movie.streamingSources.length ? (
           <div className="spotlightActions">
@@ -54,6 +50,6 @@ export default function MovieInlineFocus({ movie, unavailable }: MovieInlineFocu
           <p className="spotlightUnavailable">No streaming sources found yet for this title.</p>
         )}
       </div>
-    </section>
+    </article>
   );
 }

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
 import MovieGrid from '@/app/components/MovieGrid';
-import MovieInlineFocus from '@/app/components/MovieInlineFocus';
 import MovieSpotlight from '@/app/components/MovieSpotlight';
 import PastePanel from '@/app/components/PastePanel';
 import ProgressBar from '@/app/components/ProgressBar';
@@ -291,9 +290,6 @@ export default function HomePage(): JSX.Element {
       {movies.length > 0 && viewMode === 'spotlight' ? (
         <MovieSpotlight movie={selectedMovie} unavailable={selectedUnavailable} />
       ) : null}
-      {movies.length > 0 && viewMode === 'inline' ? (
-        <MovieInlineFocus movie={selectedMovie} unavailable={selectedUnavailable} />
-      ) : null}
 
       {movies.length > 0 ? (
         <MovieGrid
@@ -301,6 +297,7 @@ export default function HomePage(): JSX.Element {
           activeServices={activeServices}
           selectedMovieId={selectedMovieId}
           onSelectMovie={setSelectedMovieId}
+          detailMode={viewMode}
         />
       ) : null}
 

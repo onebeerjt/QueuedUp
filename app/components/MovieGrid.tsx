@@ -1,13 +1,17 @@
+import { Fragment } from 'react';
+
 import { normalizeServiceName } from '@/lib/services';
 import type { Movie } from '@/types/movie';
 
 import MovieCard from './MovieCard';
+import MovieRowExpand from './MovieRowExpand';
 
 interface MovieGridProps {
   movies: Movie[];
   activeServices: string[];
   selectedMovieId: string | null;
   onSelectMovie: (movieId: string) => void;
+  detailMode: 'spotlight' | 'inline';
 }
 
 function isUnavailable(movie: Movie, activeServices: string[]): boolean {
@@ -21,22 +25,37 @@ function isUnavailable(movie: Movie, activeServices: string[]): boolean {
   return !serviceIds.some((id) => activeServices.includes(id));
 }
 
-export default function MovieGrid({ movies, activeServices, selectedMovieId, onSelectMovie }: MovieGridProps): JSX.Element {
-  const focusMode = Boolean(selectedMovieId);
+export default function MovieGrid({
+  movies,
+  activeServices,
+  selectedMovieId,
+  onSelectMovie,
+  detailMode
+}: MovieGridProps): JSX.Element {
+  const focusMode = detailMode === 'inline' && Boolean(selectedMovieId);
 
   return (
     <section className="movieGridWrap" id="movie-grid">
       <div className={`movieGrid ${focusMode ? 'focusMode' : ''}`}>
-        {movies.map((movie) => (
-          <MovieCard
-            key={`${movie.id}-${movie.title}`}
-            movie={movie}
-            unavailable={isUnavailable(movie, activeServices)}
-            selected={selectedMovieId === movie.id}
-            condensed={focusMode && selectedMovieId !== movie.id}
-            onSelect={onSelectMovie}
-          />
-        ))}
+        {movies.map((movie) => {
+          const unavailable = isUnavailable(movie, activeServices);
+          const selected = selectedMovieId === movie.id;
+
+          return (
+            <Fragment key={`${movie.id}-${movie.title}`}>
+              <MovieCard
+                movie={movie}
+                unavailable={unavailable}
+                selected={selected}
+                condensed={focusMode && !selected}
+                onSelect={onSelectMovie}
+              />
+              {detailMode === 'inline' && selected ? (
+                <MovieRowExpand movie={movie} unavailable={unavailable} />
+              ) : null}
+            </Fragment>
+          );
+        })}
       </div>
     </section>
   );
