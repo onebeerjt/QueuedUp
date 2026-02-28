@@ -1,8 +1,10 @@
 interface WatchmodeSearchResult {
-  id?: number;
-  title_id?: number;
+  id?: number | string;
+  title_id?: number | string;
   name: string;
-  year?: number;
+  year?: number | string;
+  tmdb_id?: number | string;
+  imdb_id?: string;
   type?: string;
 }
 
@@ -85,8 +87,9 @@ function scoreCandidate(
     score += 45;
   }
 
-  if (queryYear && candidate.year) {
-    const diff = Math.abs(candidate.year - queryYear);
+  const candidateYear = coerceNumericId(candidate.year);
+  if (queryYear && candidateYear) {
+    const diff = Math.abs(candidateYear - queryYear);
     if (diff === 0) {
       score += 90;
     } else if (diff === 1) {
@@ -101,17 +104,40 @@ function scoreCandidate(
   return score;
 }
 
+function coerceNumericId(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    const exact = Number(trimmed);
+    if (Number.isFinite(exact)) {
+      return exact;
+    }
+    const match = trimmed.match(/\d+/);
+    if (match) {
+      const parsed = Number(match[0]);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
 function extractWatchmodeId(result: WatchmodeSearchResult | undefined): number | null {
   if (!result) {
     return null;
   }
-  const candidate = result.id ?? result.title_id;
-  return typeof candidate === 'number' ? candidate : null;
+  return coerceNumericId(result.title_id) ?? coerceNumericId(result.id);
 }
 
 export async function searchWatchmodeTitle(title: string, year?: number): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchResponse>('/autocomplete-search/', {
-    search_value: title
+    search_value: title,
+    search_type: '2'
   });
 
   const ranked = [...(data.title_results ?? [])].sort(
@@ -132,6 +158,40 @@ async function searchWatchmodeByField(
 
   const results = data.title_results ?? data.results ?? [];
   return extractWatchmodeId(results[0]);
+}
+
+async function searchWatchmodeByNameRanked(params: {
+  title: string;
+  year?: number;
+  tmdbId?: number;
+  imdbId?: string | null;
+}): Promise<number | null> {
+  const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/search/', {
+    search_field: 'name',
+    search_value: params.title,
+    types: 'movie'
+  });
+
+  const results = data.title_results ?? data.results ?? [];
+  if (!results.length) {
+    return null;
+  }
+
+  const ranked = [...results].sort((a, b) => {
+    const aTmdb = coerceNumericId(a.tmdb_id);
+    const bTmdb = coerceNumericId(b.tmdb_id);
+
+    const aBoost =
+      (params.tmdbId && aTmdb === params.tmdbId ? 1000 : 0) +
+      (params.imdbId && a.imdb_id === params.imdbId ? 900 : 0);
+    const bBoost =
+      (params.tmdbId && bTmdb === params.tmdbId ? 1000 : 0) +
+      (params.imdbId && b.imdb_id === params.imdbId ? 900 : 0);
+
+    return bBoost + scoreCandidate(params.title, params.year, b) - (aBoost + scoreCandidate(params.title, params.year, a));
+  });
+
+  return extractWatchmodeId(ranked[0]);
 }
 
 export async function resolveWatchmodeTitleId(params: {
@@ -171,7 +231,12 @@ export async function resolveWatchmodeTitleId(params: {
       continue;
     }
     try {
-      const byName = await searchWatchmodeByField('name', attempt);
+      const byName = await searchWatchmodeByNameRanked({
+        title: attempt,
+        year,
+        tmdbId,
+        imdbId
+      });
       if (byName) {
         return byName;
       }
@@ -204,15 +269,17 @@ export async function resolveWatchmodeTitleId(params: {
 }
 
 export async function getWatchmodeSources(titleId: number): Promise<WatchmodeSource[]> {
-  const data = await watchmodeFetch<WatchmodeSourcesResponse>(`/title/${titleId}/sources/`, {
-    regions: 'US'
-  });
+  const data = await watchmodeFetch<WatchmodeSourcesResponse>(`/title/${titleId}/sources/`);
 
   const blockedTypes = new Set(['buy', 'rent']);
 
   return data.sources
     .filter((source) => {
       if (!source.web_url) {
+        return false;
+      }
+      const region = (source.region ?? '').toUpperCase();
+      if (region && region !== 'US') {
         return false;
       }
       const type = (source.type ?? '').toLowerCase();
