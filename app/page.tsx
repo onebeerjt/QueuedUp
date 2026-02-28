@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 import FilterBar from '@/app/components/FilterBar';
 import MovieGrid from '@/app/components/MovieGrid';
@@ -37,7 +36,6 @@ function sortMovies(movies: Movie[], sortBy: string): Movie[] {
 }
 
 export default function HomePage(): JSX.Element {
-  const searchParams = useSearchParams();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -80,7 +78,7 @@ export default function HomePage(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const share = searchParams.get('share');
+    const share = new URLSearchParams(window.location.search).get('share');
     if (!share || shareLoadedRef.current) {
       return;
     }
@@ -100,7 +98,7 @@ export default function HomePage(): JSX.Element {
     } catch {
       // Ignore malformed share params.
     }
-  }, [searchParams]);
+  }, []);
 
   async function runFetch(titles: string[]): Promise<Movie[]> {
     const response = await fetch('/api/fetch-movies', {
