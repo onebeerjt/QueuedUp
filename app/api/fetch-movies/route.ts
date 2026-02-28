@@ -28,7 +28,72 @@ function dedupeSources(sources: StreamingSource[]): StreamingSource[] {
   return Array.from(map.values());
 }
 
-function toStreamingSources(rawSources: Array<{ name: string; web_url: string }>): StreamingSource[] {
+function preferredServiceUrl(serviceId: string, title: string): string | null {
+  const encoded = encodeURIComponent(title);
+  if (serviceId === 'netflix') {
+    return `https://www.netflix.com/search?q=${encoded}`;
+  }
+  if (serviceId === 'hbo') {
+    return `https://play.max.com/search?q=${encoded}`;
+  }
+  if (serviceId === 'hulu') {
+    return `https://www.hulu.com/search?q=${encoded}`;
+  }
+  if (serviceId === 'prime') {
+    return `https://www.amazon.com/s?k=${encoded}&i=instant-video`;
+  }
+  if (serviceId === 'apple') {
+    return `https://tv.apple.com/search?term=${encoded}`;
+  }
+  if (serviceId === 'disney') {
+    return `https://www.disneyplus.com/search/${encoded}`;
+  }
+  if (serviceId === 'peacock') {
+    return `https://www.peacocktv.com/watch/search?query=${encoded}`;
+  }
+  if (serviceId === 'paramount') {
+    return `https://www.paramountplus.com/search/?term=${encoded}`;
+  }
+  if (serviceId === 'tubi') {
+    return `https://tubitv.com/search/${encoded}`;
+  }
+  if (serviceId === 'plex') {
+    return `https://watch.plex.tv/search?q=${encoded}`;
+  }
+  if (serviceId === 'pluto') {
+    return `https://pluto.tv/en/search?query=${encoded}`;
+  }
+  if (serviceId === 'roku') {
+    return `https://therokuchannel.roku.com/search/${encoded}`;
+  }
+  return null;
+}
+
+function normalizeStreamingUrl(serviceId: string, title: string, rawUrl: string): string {
+  const serviceUrlMap: Record<string, RegExp> = {
+    netflix: /netflix\.com/i,
+    hbo: /(max\.com|hbo\.com|hbomax\.com)/i,
+    hulu: /hulu\.com/i,
+    prime: /(amazon\.com|primevideo\.com)/i,
+    apple: /(apple\.com|tv\.apple\.com)/i,
+    disney: /disneyplus\.com/i,
+    peacock: /peacocktv\.com/i,
+    paramount: /paramountplus\.com/i,
+    tubi: /tubi(tv)?\.com/i,
+    plex: /plex\.tv/i,
+    pluto: /pluto\.tv/i,
+    roku: /(roku\.com|therokuchannel)/i
+  };
+
+  const isDirect = serviceUrlMap[serviceId]?.test(rawUrl) ?? false;
+  if (isDirect) {
+    return rawUrl;
+  }
+
+  return preferredServiceUrl(serviceId, title) ?? rawUrl;
+}
+
+function toStreamingSources(rawSources: Array<{ name: string; web_url: string }>, movieTitle: string): StreamingSource[] {
   const filtered = rawSources
     .map((source) => {
       const serviceId = normalizeServiceName(source.name);
@@ -39,7 +104,7 @@ function toStreamingSources(rawSources: Array<{ name: string; web_url: string }>
       const service = SERVICES.find((item) => item.id === serviceId);
       return {
         name: service?.name ?? source.name,
-        web_url: source.web_url,
+        web_url: normalizeStreamingUrl(serviceId, movieTitle, source.web_url),
         logo: getServiceLogoPath(source.name)
       } satisfies StreamingSource;
     })
@@ -87,7 +152,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   if (watchmodeId) {
     try {
       const sources = await getWatchmodeSources(watchmodeId);
-      streamingSources = toStreamingSources(sources);
+      streamingSources = toStreamingSources(sources, tmdbMatch.title);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[watchmode] sources failed for "${tmdbMatch.title}" (${watchmodeId}): ${message}`);
@@ -98,7 +163,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   if (!streamingSources.length) {
     try {
       const tmdbProviders = await getTmdbWatchProviders(tmdbMatch.id);
-      streamingSources = toStreamingSources(tmdbProviders);
+      streamingSources = toStreamingSources(tmdbProviders, tmdbMatch.title);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[tmdb] watch providers failed for "${tmdbMatch.title}" (${tmdbMatch.id}): ${message}`);

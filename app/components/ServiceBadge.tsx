@@ -4,9 +4,11 @@ import type { StreamingSource } from '@/types/movie';
 interface ServiceBadgeProps {
   source: StreamingSource;
   disabled: boolean;
+  className?: string;
+  showLabel?: boolean;
 }
 
-export default function ServiceBadge({ source, disabled }: ServiceBadgeProps): JSX.Element {
+export default function ServiceBadge({ source, disabled, className = '', showLabel = false }: ServiceBadgeProps): JSX.Element {
   const serviceId = normalizeServiceName(source.name);
   const service = SERVICES.find((item) => item.id === serviceId);
   const label = service?.name ?? source.name;
@@ -19,7 +21,7 @@ export default function ServiceBadge({ source, disabled }: ServiceBadgeProps): J
       target={disabled ? undefined : '_blank'}
       rel={disabled ? undefined : 'noreferrer'}
       title={label}
-      className={`serviceBadge ${disabled ? 'disabled' : ''}`}
+      className={`serviceBadge ${disabled ? 'disabled' : ''} ${className}`.trim()}
       aria-label={label}
       style={{ backgroundColor: color, color: color === '#FFFFFF' ? '#111' : '#fff' }}
     >
@@ -39,6 +41,7 @@ export default function ServiceBadge({ source, disabled }: ServiceBadgeProps): J
         />
       ) : null}
       <span style={{ display: source.logo ? 'none' : 'inline' }}>{initial}</span>
+      {showLabel ? <span className="serviceBadgeLabel">{label}</span> : null}
     </a>
   );
 }

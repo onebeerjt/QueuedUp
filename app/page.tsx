@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
 import MovieGrid from '@/app/components/MovieGrid';
+import MovieSpotlight from '@/app/components/MovieSpotlight';
 import PastePanel from '@/app/components/PastePanel';
 import ProgressBar from '@/app/components/ProgressBar';
 import { normalizeServiceName } from '@/lib/services';
@@ -46,6 +47,7 @@ export default function HomePage(): JSX.Element {
   const [panelHidden, setPanelHidden] = useState(false);
   const [progressVisible, setProgressVisible] = useState(false);
   const [toast, setToast] = useState('');
+  const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
 
   const shareLoadedRef = useRef(false);
   const progressTimerRef = useRef<number | null>(null);
@@ -144,6 +146,7 @@ export default function HomePage(): JSX.Element {
         window.clearInterval(progressTimerRef.current);
       }
       setMovies(fetchedMovies);
+      setSelectedMovieId(fetchedMovies[0]?.id ?? null);
       setProgress({ current: titles.length, total: titles.length });
 
       if (servicesOverride) {
@@ -217,6 +220,22 @@ export default function HomePage(): JSX.Element {
     [filteredMovies, activeServices]
   );
 
+  useEffect(() => {
+    if (!filteredMovies.length) {
+      setSelectedMovieId(null);
+      return;
+    }
+    if (!selectedMovieId || !filteredMovies.some((movie) => movie.id === selectedMovieId)) {
+      setSelectedMovieId(filteredMovies[0].id);
+    }
+  }, [filteredMovies, selectedMovieId]);
+
+  const selectedMovie = useMemo(
+    () => filteredMovies.find((movie) => movie.id === selectedMovieId) ?? filteredMovies[0] ?? null,
+    [filteredMovies, selectedMovieId]
+  );
+  const selectedUnavailable = selectedMovie ? !movieIsAvailable(selectedMovie, activeServices) : false;
+
   return (
     <main className="page">
       <PastePanel
@@ -243,7 +262,16 @@ export default function HomePage(): JSX.Element {
 
       <ProgressBar current={progress.current} total={progress.total} visible={progressVisible} />
 
-      {movies.length > 0 ? <MovieGrid movies={filteredMovies} activeServices={activeServices} /> : null}
+      {movies.length > 0 ? <MovieSpotlight movie={selectedMovie} unavailable={selectedUnavailable} /> : null}
+
+      {movies.length > 0 ? (
+        <MovieGrid
+          movies={filteredMovies}
+          activeServices={activeServices}
+          selectedMovieId={selectedMovieId}
+          onSelectMovie={setSelectedMovieId}
+        />
+      ) : null}
 
       {toast ? (
         <div className="toast" role="status" aria-live="polite">

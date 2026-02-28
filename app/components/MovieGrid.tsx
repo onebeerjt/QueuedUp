@@ -6,6 +6,8 @@ import MovieCard from './MovieCard';
 interface MovieGridProps {
   movies: Movie[];
   activeServices: string[];
+  selectedMovieId: string | null;
+  onSelectMovie: (movieId: string) => void;
 }
 
 function isUnavailable(movie: Movie, activeServices: string[]): boolean {
@@ -19,12 +21,21 @@ function isUnavailable(movie: Movie, activeServices: string[]): boolean {
   return !serviceIds.some((id) => activeServices.includes(id));
 }
 
-export default function MovieGrid({ movies, activeServices }: MovieGridProps): JSX.Element {
+export default function MovieGrid({ movies, activeServices, selectedMovieId, onSelectMovie }: MovieGridProps): JSX.Element {
+  const focusMode = Boolean(selectedMovieId);
+
   return (
     <section className="movieGridWrap" id="movie-grid">
-      <div className="movieGrid">
+      <div className={`movieGrid ${focusMode ? 'focusMode' : ''}`}>
         {movies.map((movie) => (
-          <MovieCard key={`${movie.id}-${movie.title}`} movie={movie} unavailable={isUnavailable(movie, activeServices)} />
+          <MovieCard
+            key={`${movie.id}-${movie.title}`}
+            movie={movie}
+            unavailable={isUnavailable(movie, activeServices)}
+            selected={selectedMovieId === movie.id}
+            condensed={focusMode && selectedMovieId !== movie.id}
+            onSelect={onSelectMovie}
+          />
         ))}
       </div>
     </section>
