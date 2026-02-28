@@ -60,10 +60,14 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
     };
   }
 
-  const [details, watchmodeId] = await Promise.all([
-    getTmdbMovieDetails(tmdbMatch.id),
-    searchWatchmodeTitle(tmdbMatch.title)
-  ]);
+  const details = await getTmdbMovieDetails(tmdbMatch.id);
+
+  let watchmodeId: number | null = null;
+  try {
+    watchmodeId = await searchWatchmodeTitle(tmdbMatch.title);
+  } catch {
+    watchmodeId = null;
+  }
 
   let streamingSources: StreamingSource[] = [];
   if (watchmodeId) {
