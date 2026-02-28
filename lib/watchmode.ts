@@ -64,8 +64,12 @@ export async function getWatchmodeSources(titleId: number): Promise<WatchmodeSou
     regions: 'US'
   });
 
+  const allowedTypes = new Set(['sub', 'free']);
+
   return data.sources
-    .filter((source) => source.region === 'US' && source.type === 'sub' && Boolean(source.web_url))
+    .filter(
+      (source) => source.region === 'US' && allowedTypes.has(source.type.toLowerCase()) && Boolean(source.web_url)
+    )
     .map((source) => ({
       name: source.name,
       web_url: source.web_url

@@ -14,9 +14,14 @@ interface PastePanelProps {
 }
 
 function parseTitles(value: string): string[] {
+  const normalized = value
+    .replace(/\r\n/g, '\n')
+    .replace(/[;|]/g, '\n')
+    .replace(/,\s*(?=[A-Za-z0-9"'(])/g, '\n');
+
   return Array.from(
     new Set(
-      value
+      normalized
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
