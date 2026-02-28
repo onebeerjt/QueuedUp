@@ -72,7 +72,20 @@ export default function FilterBar({
                     : undefined
                 }
               >
-                <img src={service.logo} alt="" aria-hidden="true" className="servicePillLogo" />
+                <img
+                  src={service.logo}
+                  alt=""
+                  aria-hidden="true"
+                  className="servicePillLogo"
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                    const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (sibling) {
+                      sibling.style.display = 'inline-flex';
+                    }
+                  }}
+                />
+                <span className="servicePillFallback">{service.name.slice(0, 1).toUpperCase()}</span>
                 {FREE_WITH_ADS.has(service.id) ? <span className="freeWithAds">(free w/ ads)</span> : null}
               </button>
             );

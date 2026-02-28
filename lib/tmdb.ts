@@ -19,6 +19,7 @@ interface TmdbGenre {
 
 interface TmdbMovieDetails {
   runtime: number | null;
+  imdb_id: string | null;
 }
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';

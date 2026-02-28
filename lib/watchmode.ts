@@ -9,6 +9,11 @@ interface WatchmodeSearchResponse {
   title_results: WatchmodeSearchResult[];
 }
 
+interface WatchmodeSearchApiResponse {
+  title_results?: WatchmodeSearchResult[];
+  results?: WatchmodeSearchResult[];
+}
+
 interface WatchmodeSource {
   name: string;
   web_url: string;
@@ -108,17 +113,84 @@ export async function searchWatchmodeTitle(title: string, year?: number): Promis
   return match?.id ?? null;
 }
 
+async function searchWatchmodeByField(
+  searchField: 'imdb_id' | 'name',
+  searchValue: string
+): Promise<number | null> {
+  const data = await watchmodeFetch<WatchmodeSearchApiResponse>('/search/', {
+    search_field: searchField,
+    search_value: searchValue,
+    types: 'movie'
+  });
+
+  const results = data.title_results ?? data.results ?? [];
+  return results[0]?.id ?? null;
+}
+
+export async function resolveWatchmodeTitleId(params: {
+  tmdbTitle: string;
+  originalTitle: string;
+  year?: number;
+  imdbId?: string | null;
+}): Promise<number | null> {
+  const { tmdbTitle, originalTitle, year, imdbId } = params;
+
+  if (imdbId) {
+    try {
+      const byImdb = await searchWatchmodeByField('imdb_id', imdbId);
+      if (byImdb) {
+        return byImdb;
+      }
+    } catch {
+      // Fallback to title-based matching below.
+    }
+  }
+
+  const attempts = new Set<string>([tmdbTitle, originalTitle]);
+  if (year) {
+    attempts.add(`${tmdbTitle} ${year}`);
+    attempts.add(`${originalTitle} ${year}`);
+  }
+
+  for (const attempt of attempts) {
+    if (!attempt.trim()) {
+      continue;
+    }
+    try {
+      const id = await searchWatchmodeTitle(attempt, year);
+      if (id) {
+        return id;
+      }
+    } catch {
+      // Keep trying additional strategies.
+    }
+  }
+
+  return null;
+}
+
 export async function getWatchmodeSources(titleId: number): Promise<WatchmodeSource[]> {
   const data = await watchmodeFetch<WatchmodeSourcesResponse>(`/title/${titleId}/sources/`, {
     regions: 'US'
   });
 
-  const allowedTypes = new Set(['sub', 'free']);
+  const allowedTypes = new Set(['sub', 'free', 'tv_everywhere', 'tve', 'free_with_ads', 'unknown']);
 
   return data.sources
-    .filter(
-      (source) => source.region === 'US' && allowedTypes.has(source.type.toLowerCase()) && Boolean(source.web_url)
-    )
+    .filter((source) => {
+      if (!source.web_url) {
+        return false;
+      }
+      const region = (source.region ?? '').toUpperCase();
+      if (region && region !== 'US') {
+        return false;
+      }
+      const type = (source.type ?? '').toLowerCase();
+      if (!type) {
+        return true;
+      }
+      return allowedTypes.has(type);
+    })
     .map((source) => ({
       name: source.name,
       web_url: source.web_url

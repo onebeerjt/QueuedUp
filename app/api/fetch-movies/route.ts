@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { SERVICES, getServiceLogoPath, normalizeServiceName } from '@/lib/services';
 import { buildPosterUrl, getTmdbGenreMap, getTmdbMovieDetails, searchTmdbMovie } from '@/lib/tmdb';
 import { processInBatches, slugify } from '@/lib/utils';
-import { getWatchmodeSources, searchWatchmodeTitle } from '@/lib/watchmode';
+import { getWatchmodeSources, resolveWatchmodeTitleId } from '@/lib/watchmode';
 import type { Movie, StreamingSource } from '@/types/movie';
 
 interface FetchMoviesRequest {
@@ -65,10 +65,12 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
 
   let watchmodeId: number | null = null;
   try {
-    watchmodeId = await searchWatchmodeTitle(tmdbMatch.title, tmdbYear);
-    if (!watchmodeId && tmdbMatch.title.toLowerCase() !== title.toLowerCase()) {
-      watchmodeId = await searchWatchmodeTitle(title, tmdbYear);
-    }
+    watchmodeId = await resolveWatchmodeTitleId({
+      tmdbTitle: tmdbMatch.title,
+      originalTitle: title,
+      year: tmdbYear,
+      imdbId: details.imdb_id
+    });
   } catch {
     watchmodeId = null;
   }
