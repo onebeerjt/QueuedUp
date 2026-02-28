@@ -61,10 +61,14 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   }
 
   const details = await getTmdbMovieDetails(tmdbMatch.id);
+  const tmdbYear = tmdbMatch.release_date ? Number(tmdbMatch.release_date.slice(0, 4)) : undefined;
 
   let watchmodeId: number | null = null;
   try {
-    watchmodeId = await searchWatchmodeTitle(tmdbMatch.title);
+    watchmodeId = await searchWatchmodeTitle(tmdbMatch.title, tmdbYear);
+    if (!watchmodeId && tmdbMatch.title.toLowerCase() !== title.toLowerCase()) {
+      watchmodeId = await searchWatchmodeTitle(title, tmdbYear);
+    }
   } catch {
     watchmodeId = null;
   }
@@ -84,7 +88,7 @@ async function fetchMovieByTitle(title: string, genreMap: Map<number, string>): 
   return {
     id: String(tmdbMatch.id),
     title: tmdbMatch.title,
-    year: tmdbMatch.release_date ? Number(tmdbMatch.release_date.slice(0, 4)) : 0,
+    year: tmdbYear ?? 0,
     poster: buildPosterUrl(tmdbMatch.poster_path),
     overview: tmdbMatch.overview || 'No overview available.',
     genres,

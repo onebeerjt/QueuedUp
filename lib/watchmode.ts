@@ -1,7 +1,8 @@
 interface WatchmodeSearchResult {
   id: number;
   name: string;
-  year: number;
+  year?: number;
+  type?: string;
 }
 
 interface WatchmodeSearchResponse {
@@ -49,13 +50,61 @@ async function watchmodeFetch<T>(path: string, params: Record<string, string> = 
   return (await res.json()) as T;
 }
 
-export async function searchWatchmodeTitle(title: string): Promise<number | null> {
+function normalizeTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function scoreCandidate(
+  queryTitle: string,
+  queryYear: number | undefined,
+  candidate: WatchmodeSearchResult
+): number {
+  const query = normalizeTitle(queryTitle);
+  const candidateTitle = normalizeTitle(candidate.name);
+  let score = 0;
+
+  if (candidate.type?.toLowerCase() === 'movie') {
+    score += 30;
+  }
+
+  if (candidateTitle === query) {
+    score += 120;
+  } else if (candidateTitle.startsWith(query) || query.startsWith(candidateTitle)) {
+    score += 80;
+  } else if (candidateTitle.includes(query) || query.includes(candidateTitle)) {
+    score += 45;
+  }
+
+  if (queryYear && candidate.year) {
+    const diff = Math.abs(candidate.year - queryYear);
+    if (diff === 0) {
+      score += 90;
+    } else if (diff === 1) {
+      score += 55;
+    } else if (diff <= 3) {
+      score += 25;
+    } else {
+      score -= diff;
+    }
+  }
+
+  return score;
+}
+
+export async function searchWatchmodeTitle(title: string, year?: number): Promise<number | null> {
   const data = await watchmodeFetch<WatchmodeSearchResponse>('/autocomplete-search/', {
     search_value: title,
     search_type: '2'
   });
 
-  const match = data.title_results?.[0];
+  const ranked = [...(data.title_results ?? [])].sort(
+    (a, b) => scoreCandidate(title, year, b) - scoreCandidate(title, year, a)
+  );
+  const match = ranked[0];
   return match?.id ?? null;
 }
 

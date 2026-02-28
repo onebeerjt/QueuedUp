@@ -72,7 +72,7 @@ export default function FilterBar({
                     : undefined
                 }
               >
-                <img src={`/icons/${service.id}.svg`} alt="" aria-hidden="true" className="servicePillLogo" />
+                <img src={service.logo} alt="" aria-hidden="true" className="servicePillLogo" />
                 {FREE_WITH_ADS.has(service.id) ? <span className="freeWithAds">(free w/ ads)</span> : null}
               </button>
             );
