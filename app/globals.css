@@ -802,6 +802,117 @@ p {
   color: var(--accent);
 }
 
+.discoverSearch {
+  position: relative;
+  max-width: 760px;
+  margin-bottom: 16px;
+}
+
+.discoverSearch h1 {
+  margin-bottom: 10px;
+}
+
+.discoverInput {
+  width: 100%;
+  border: 1px solid #2f2f38;
+  border-radius: 12px;
+  background: #13131a;
+  color: var(--text);
+  padding: 12px 14px;
+  outline: none;
+}
+
+.discoverHint {
+  color: #9b98ac;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.discoverResults {
+  margin-top: 8px;
+  border-radius: 12px;
+  background: #14141c;
+  border: 1px solid #2d2d38;
+  overflow: hidden;
+}
+
+.discoverResultItem {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #262633;
+  background: transparent;
+  color: var(--text);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+}
+
+.discoverResultItem:first-child {
+  border-top: 0;
+}
+
+.discoverResultItem:hover {
+  background: #1b1b25;
+}
+
+.discoverRowsWrap {
+  margin-top: 14px;
+}
+
+.discoverRow {
+  margin-top: 16px;
+}
+
+.discoverRowTitle {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.discoverRail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.discoverTile {
+  width: 180px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #16161f;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+}
+
+.discoverTilePoster,
+.discoverTileFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.discoverTileFallback {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.discoverTileMeta {
+  padding: 8px;
+}
+
+.discoverTileTitle {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
 @media (min-width: 769px) {
   .movieGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
