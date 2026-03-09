@@ -27,6 +27,9 @@ interface TmdbDiscoverResponse {
   results: Array<{ id: number; title: string; release_date?: string }>;
 }
 
+const NOISE_TITLE_PATTERN =
+  /\b(concert|benefit|live\s+at|tv\s+special|behind\s+the\s+scenes|making\s+of|episode)\b/i;
+
 function getTmdbKey(): string {
   const key = process.env.TMDB_API_KEY;
   if (!key) {
@@ -66,6 +69,14 @@ function normalizeTitleList(
   const seen = new Set<string>();
   const filtered = sortByDateDesc(items)
     .filter((item) => item.id !== excludeId && item.title?.trim())
+    .filter((item) => !NOISE_TITLE_PATTERN.test(item.title))
+    .filter((item) => {
+      if (!item.release_date) {
+        return true;
+      }
+      const year = Number(item.release_date.slice(0, 4));
+      return !Number.isNaN(year) && year >= 1920;
+    })
     .filter((item) => {
       const key = item.title.trim().toLowerCase();
       if (seen.has(key)) {

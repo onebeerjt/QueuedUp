@@ -9,27 +9,59 @@ export interface TonightPack {
   label: string;
 }
 
-function rated(movies: Movie[], minRating = 6.4): Movie[] {
-  return movies.filter((movie) => movie.poster && movie.imdbRating >= minRating && !movie.notFound);
-}
+const NOISE_TITLE_PATTERN =
+  /\b(concert|benefit|live\s+at|tv\s+special|behind\s+the\s+scenes|making\s+of|episode)\b/i;
 
-export function pickSomethingTonight(seed: Movie | null, candidates: Movie[]): Movie | null {
-  if (!seed) {
-    return null;
+function isLikelyFeatureFilm(movie: Movie): boolean {
+  if (!movie.poster || movie.notFound) {
+    return false;
   }
-  return rated(candidates)
-    .filter((movie) => movie.id !== seed.id)
-    .sort((a, b) => b.imdbRating - a.imdbRating || b.year - a.year)[0] ?? null;
+  if (NOISE_TITLE_PATTERN.test(movie.title)) {
+    return false;
+  }
+  if (movie.year && (movie.year < 1920 || movie.year > new Date().getFullYear() + 1)) {
+    return false;
+  }
+  if (movie.imdbRating < 5.8) {
+    return false;
+  }
+  if (movie.runtime > 0 && (movie.runtime < 65 || movie.runtime > 230)) {
+    return false;
+  }
+  return true;
 }
 
-export function buildDoubleFeature(seed: Movie | null, candidates: Movie[]): Movie[] {
+function overlapCount(seed: Movie, movie: Movie): number {
+  return movie.genres.filter((genre) => seed.genres.includes(genre)).length;
+}
+
+function connectionScore(seed: Movie, movie: Movie): number {
+  const overlap = overlapCount(seed, movie);
+  const yearDistance = seed.year && movie.year ? Math.abs(seed.year - movie.year) : 50;
+  const yearBoost = yearDistance <= 8 ? 2 : yearDistance <= 15 ? 1 : 0;
+  const firstGenreBoost = seed.genres[0] && movie.genres.includes(seed.genres[0]) ? 2 : 0;
+  return overlap * 4 + yearBoost + firstGenreBoost + movie.imdbRating * 0.35;
+}
+
+function connectedPool(seed: Movie | null, candidates: Movie[], minRating = 6.4): Movie[] {
   if (!seed) {
     return [];
   }
 
-  const pool = rated(candidates)
+  return candidates
     .filter((movie) => movie.id !== seed.id)
-    .sort((a, b) => b.imdbRating - a.imdbRating || b.year - a.year);
+    .filter((movie) => movie.imdbRating >= minRating)
+    .filter(isLikelyFeatureFilm)
+    .filter((movie) => (seed.genres.length ? overlapCount(seed, movie) > 0 : true))
+    .sort((a, b) => connectionScore(seed, b) - connectionScore(seed, a) || b.year - a.year);
+}
+
+export function pickSomethingTonight(seed: Movie | null, candidates: Movie[]): Movie | null {
+  return connectedPool(seed, candidates)[0] ?? null;
+}
+
+export function buildDoubleFeature(seed: Movie | null, candidates: Movie[]): Movie[] {
+  const pool = connectedPool(seed, candidates);
 
   if (pool.length < 2) {
     return pool.slice(0, 2);
@@ -37,20 +69,15 @@ export function buildDoubleFeature(seed: Movie | null, candidates: Movie[]): Mov
 
   const first = pool[0];
   const second = pool.find((movie) =>
-    movie.genres.some((genre) => first.genres.includes(genre)) || Math.abs(movie.year - first.year) <= 10
+    movie.id !== first.id &&
+    (movie.genres.some((genre) => first.genres.includes(genre)) || Math.abs(movie.year - first.year) <= 10)
   ) ?? pool[1];
 
   return dedupeMovies([first, second]).slice(0, 2);
 }
 
 export function buildTripleFeature(seed: Movie | null, candidates: Movie[]): Movie[] {
-  if (!seed) {
-    return [];
-  }
-
-  const pool = rated(candidates)
-    .filter((movie) => movie.id !== seed.id)
-    .sort((a, b) => b.imdbRating - a.imdbRating || b.year - a.year);
+  const pool = connectedPool(seed, candidates, 6.2);
 
   const triple: Movie[] = [];
   for (const movie of pool) {
