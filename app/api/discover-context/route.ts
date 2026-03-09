@@ -6,6 +6,7 @@ interface TmdbMovieDetails {
   overview: string;
   poster_path: string | null;
   release_date: string;
+  genres?: Array<{ id: number; name: string }>;
 }
 
 interface TmdbCreditsResponse {
@@ -16,6 +17,14 @@ interface TmdbCreditsResponse {
 interface TmdbPersonMovieCreditsResponse {
   crew?: Array<{ id: number; title: string; release_date?: string; job?: string }>;
   cast?: Array<{ id: number; title: string; release_date?: string }>;
+}
+
+interface TmdbSimilarResponse {
+  results: Array<{ id: number; title: string; release_date?: string }>;
+}
+
+interface TmdbDiscoverResponse {
+  results: Array<{ id: number; title: string; release_date?: string }>;
 }
 
 function getTmdbKey(): string {
@@ -105,9 +114,16 @@ export async function GET(request: Request): Promise<NextResponse> {
         label: `More by ${director.name}`,
         titles: normalizeTitleList(directed, tmdbId, 20)
       });
+
+      const deepCuts = directed.slice().reverse();
+      rows.push({
+        key: `director-deepcuts-${director.id}`,
+        label: `Deep Cuts from ${director.name}`,
+        titles: normalizeTitleList(deepCuts, tmdbId, 12)
+      });
     }
 
-    for (const actor of topCast) {
+    for (const actor of topCast.slice(0, 2)) {
       const actorCredits = await tmdbFetch<TmdbPersonMovieCreditsResponse>(`/person/${actor.id}/movie_credits`, {
         language: 'en-US'
       });
@@ -123,6 +139,70 @@ export async function GET(request: Request): Promise<NextResponse> {
         titles: normalizeTitleList(acted, tmdbId, 12)
       });
     }
+
+    const similar = await tmdbFetch<TmdbSimilarResponse>(`/movie/${tmdbId}/similar`, {
+      language: 'en-US',
+      page: '1'
+    });
+    rows.push({
+      key: `similar-${tmdbId}`,
+      label: 'Similar Vibe',
+      titles: normalizeTitleList(
+        (similar.results || []).map((item) => ({ id: item.id, title: item.title, release_date: item.release_date })),
+        tmdbId,
+        20
+      )
+    });
+
+    const primaryGenreId = details.genres?.[0]?.id;
+    const releaseYear = details.release_date ? Number(details.release_date.slice(0, 4)) : 0;
+    const decadeStart = releaseYear ? Math.floor(releaseYear / 10) * 10 : 0;
+    if (primaryGenreId && decadeStart) {
+      const decade = await tmdbFetch<TmdbDiscoverResponse>('/discover/movie', {
+        language: 'en-US',
+        sort_by: 'vote_average.desc',
+        include_adult: 'false',
+        with_genres: String(primaryGenreId),
+        'vote_count.gte': '120',
+        'primary_release_date.gte': `${decadeStart}-01-01`,
+        'primary_release_date.lte': `${decadeStart + 9}-12-31`,
+        page: '1'
+      });
+
+      rows.push({
+        key: `decade-genre-${tmdbId}`,
+        label: `${decadeStart}s + ${details.genres?.[0]?.name ?? 'Genre'}`,
+        titles: normalizeTitleList(
+          (decade.results || []).map((item) => ({ id: item.id, title: item.title, release_date: item.release_date })),
+          tmdbId,
+          20
+        )
+      });
+    }
+
+    const hiddenGemParams: Record<string, string> = {
+      language: 'en-US',
+      sort_by: 'vote_average.desc',
+      include_adult: 'false',
+      'vote_count.gte': '80',
+      'vote_count.lte': '1400',
+      page: '1'
+    };
+    if (primaryGenreId) {
+      hiddenGemParams.with_genres = String(primaryGenreId);
+    }
+
+    const hiddenGems = await tmdbFetch<TmdbDiscoverResponse>('/discover/movie', hiddenGemParams);
+
+    rows.push({
+      key: `hidden-gems-${tmdbId}`,
+      label: 'Hidden Gems on Your Services',
+      titles: normalizeTitleList(
+        (hiddenGems.results || []).map((item) => ({ id: item.id, title: item.title, release_date: item.release_date })),
+        tmdbId,
+        20
+      )
+    });
 
     return NextResponse.json({
       hero: {

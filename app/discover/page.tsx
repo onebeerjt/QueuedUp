@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
 import MovieSpotlight from '@/app/components/MovieSpotlight';
 import DiscoverRow from '@/app/components/discover/DiscoverRow';
-import { normalizeServiceName } from '@/lib/services';
+import { flattenRows, movieIsAvailable, sortMovies } from '@/lib/discovery';
+import { buildTonightPack } from '@/lib/recommendation-rules';
 import type { Movie } from '@/types/movie';
 
 interface SearchResult {
@@ -32,29 +34,6 @@ interface LoadedRow {
   movies: Movie[];
 }
 
-function movieIsAvailable(movie: Movie, activeServices: string[]): boolean {
-  if (!activeServices.length) {
-    return true;
-  }
-
-  const sourceIds = movie.streamingSources
-    .map((source) => normalizeServiceName(source.name))
-    .filter(Boolean) as string[];
-  return sourceIds.some((id) => activeServices.includes(id));
-}
-
-function sortMovies(movies: Movie[], sortBy: string): Movie[] {
-  const next = [...movies];
-  if (sortBy === 'rating-desc') {
-    next.sort((a, b) => b.imdbRating - a.imdbRating);
-  } else if (sortBy === 'year-desc') {
-    next.sort((a, b) => b.year - a.year);
-  } else if (sortBy === 'title-asc') {
-    next.sort((a, b) => a.title.localeCompare(b.title));
-  }
-  return next;
-}
-
 async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,
@@ -77,6 +56,7 @@ async function mapWithConcurrency<T, R>(
 }
 
 export default function DiscoverPage(): JSX.Element {
+  const [tab, setTab] = useState<'discovery' | 'tonight' | 'blindspots'>('discovery');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -87,6 +67,7 @@ export default function DiscoverPage(): JSX.Element {
   const [hero, setHero] = useState<Movie | null>(null);
   const [rows, setRows] = useState<LoadedRow[]>([]);
   const [toast, setToast] = useState('');
+  const bootedFromQuery = useRef(false);
 
   async function handleSearchInput(value: string): Promise<void> {
     setQuery(value);
@@ -202,6 +183,38 @@ export default function DiscoverPage(): JSX.Element {
   const totalCount = useMemo(() => rows.reduce((acc, row) => acc + row.movies.length, 0), [rows]);
   const visibleCount = useMemo(() => filteredRows.reduce((acc, row) => acc + row.movies.length, 0), [filteredRows]);
 
+  const tonightPack = useMemo(() => {
+    const connected = flattenRows(filteredRows);
+    return buildTonightPack(hero, connected);
+  }, [filteredRows, hero]);
+
+  useEffect(() => {
+    if (bootedFromQuery.current || typeof window === 'undefined') {
+      return;
+    }
+    bootedFromQuery.current = true;
+
+    const url = new URL(window.location.href);
+    const seed = (url.searchParams.get('seed') || '').trim();
+    if (!seed) {
+      return;
+    }
+
+    setQuery(seed);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/tmdb-search?q=${encodeURIComponent(seed)}`);
+        const payload = (await res.json()) as { results?: SearchResult[] };
+        const first = payload.results?.[0];
+        if (first) {
+          await loadDiscover(first);
+        }
+      } catch {
+        // Intentionally ignore boot load failures to keep page interactive.
+      }
+    })();
+  }, []);
+
   return (
     <main className="page">
       <section className="discoverSearch">
@@ -239,21 +252,81 @@ export default function DiscoverPage(): JSX.Element {
         />
       )}
 
+      <div className="viewSwitch" role="tablist" aria-label="Discovery tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'discovery'}
+          className={`viewSwitchButton ${tab === 'discovery' ? 'active' : ''}`}
+          onClick={() => setTab('discovery')}
+        >
+          Movie Discovery
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'tonight'}
+          className={`viewSwitchButton ${tab === 'tonight' ? 'active' : ''}`}
+          onClick={() => setTab('tonight')}
+        >
+          Watch Tonight
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'blindspots'}
+          className={`viewSwitchButton ${tab === 'blindspots' ? 'active' : ''}`}
+          onClick={() => setTab('blindspots')}
+        >
+          Blind Spots
+        </button>
+      </div>
+
       {hero ? <MovieSpotlight movie={hero} unavailable={!movieIsAvailable(hero, activeServices)} /> : null}
 
-      <section id="discover-rows" className="discoverRowsWrap">
-        {filteredRows.map((row) => (
-          <DiscoverRow
-            key={row.key}
-            title={row.label}
-            movies={row.movies}
-            onSelect={(movie) => {
-              setHero(movie);
-              document.getElementById('discover-rows')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          />
-        ))}
-      </section>
+      {tab === 'discovery' ? (
+        <section id="discover-rows" className="discoverRowsWrap">
+          {filteredRows.map((row) => (
+            <DiscoverRow
+              key={row.key}
+              title={row.label}
+              movies={row.movies}
+              onSelect={(movie) => {
+                setHero(movie);
+                document.getElementById('discover-rows')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+          ))}
+        </section>
+      ) : null}
+
+      {tab === 'tonight' ? (
+        <section className="discoverRowsWrap">
+          <h3 className="discoverRowTitle">Pick Something Tonight</h3>
+          {tonightPack.pick ? (
+            <DiscoverRow title="Top pick" movies={[tonightPack.pick]} onSelect={setHero} />
+          ) : (
+            <p className="discoverHint">No streamable recommendation found for current filters.</p>
+          )}
+
+          <h3 className="discoverRowTitle">Build a Double Feature</h3>
+          <DiscoverRow title="Double feature" movies={tonightPack.doubleFeature} onSelect={setHero} />
+
+          <h3 className="discoverRowTitle">Build a Triple Feature</h3>
+          <p className="discoverHint">{tonightPack.label}</p>
+          <DiscoverRow title="Triple feature" movies={tonightPack.tripleFeature} onSelect={setHero} />
+        </section>
+      ) : null}
+
+      {tab === 'blindspots' ? (
+        <section className="discoverRowsWrap">
+          <h3 className="discoverRowTitle">Streaming Blind Spots</h3>
+          <p className="discoverHint">Analyze a public Letterboxd profile or list to generate streamable blind spots.</p>
+          <Link href="/blindspots" className="primaryButton" style={{ display: 'inline-flex', textDecoration: 'none' }}>
+            Open Blind Spots
+          </Link>
+        </section>
+      ) : null}
 
       {toast ? (
         <div className="toast" role="status" aria-live="polite">
