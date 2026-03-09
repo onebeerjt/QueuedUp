@@ -132,8 +132,29 @@ export function blindSpotReason(movie: Movie, seedGenres: string[]): string {
 
 export function buildTonightPack(seed: Movie | null, candidates: Movie[]): TonightPack {
   const pick = pickSomethingTonight(seed, candidates);
-  const doubleFeature = buildDoubleFeature(seed, candidates);
-  const tripleFeature = buildTripleFeature(seed, candidates);
+
+  const fallbackPool = connectedPool(seed, candidates, 6.0);
+  const used = new Set<string>();
+  if (pick) {
+    used.add(pick.id);
+  }
+
+  const rawDouble = buildDoubleFeature(seed, candidates).filter((movie) => !used.has(movie.id));
+  for (const movie of rawDouble) {
+    used.add(movie.id);
+  }
+  const fillDouble = fallbackPool.filter((movie) => !used.has(movie.id)).slice(0, Math.max(0, 2 - rawDouble.length));
+  for (const movie of fillDouble) {
+    used.add(movie.id);
+  }
+  const doubleFeature = dedupeMovies([...rawDouble, ...fillDouble]).slice(0, 2);
+
+  const rawTriple = buildTripleFeature(seed, candidates).filter((movie) => !used.has(movie.id));
+  for (const movie of rawTriple) {
+    used.add(movie.id);
+  }
+  const fillTriple = fallbackPool.filter((movie) => !used.has(movie.id)).slice(0, Math.max(0, 3 - rawTriple.length));
+  const tripleFeature = dedupeMovies([...rawTriple, ...fillTriple]).slice(0, 3);
   const label = tripleLabel(seed, tripleFeature);
 
   return { pick, doubleFeature, tripleFeature, label };
