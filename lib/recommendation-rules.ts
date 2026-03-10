@@ -40,7 +40,7 @@ function connectionScore(seed: Movie, movie: Movie): number {
   const yearDistance = seed.year && movie.year ? Math.abs(seed.year - movie.year) : 50;
   const yearBoost = yearDistance <= 8 ? 2 : yearDistance <= 15 ? 1 : 0;
   const firstGenreBoost = seed.genres[0] && movie.genres.includes(seed.genres[0]) ? 2 : 0;
-  return overlap * 4 + yearBoost + firstGenreBoost + movie.imdbRating * 0.35;
+  return overlap * 3 + yearBoost + firstGenreBoost + movie.imdbRating * 1.3;
 }
 
 function connectedPool(seed: Movie | null, candidates: Movie[], minRating = 6.4): Movie[] {
@@ -57,11 +57,11 @@ function connectedPool(seed: Movie | null, candidates: Movie[], minRating = 6.4)
 }
 
 export function pickSomethingTonight(seed: Movie | null, candidates: Movie[]): Movie | null {
-  return connectedPool(seed, candidates)[0] ?? null;
+  return connectedPool(seed, candidates, 7.2)[0] ?? connectedPool(seed, candidates, 6.8)[0] ?? null;
 }
 
 export function buildDoubleFeature(seed: Movie | null, candidates: Movie[]): Movie[] {
-  const pool = connectedPool(seed, candidates);
+  const pool = connectedPool(seed, candidates, 7.0);
 
   if (pool.length < 2) {
     return pool.slice(0, 2);
@@ -77,7 +77,7 @@ export function buildDoubleFeature(seed: Movie | null, candidates: Movie[]): Mov
 }
 
 export function buildTripleFeature(seed: Movie | null, candidates: Movie[]): Movie[] {
-  const pool = connectedPool(seed, candidates, 6.2);
+  const pool = connectedPool(seed, candidates, 6.8);
 
   const triple: Movie[] = [];
   for (const movie of pool) {

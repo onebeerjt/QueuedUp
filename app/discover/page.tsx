@@ -63,7 +63,7 @@ export default function DiscoverPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [rememberedServices, setRememberedServices] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState('best-match');
+  const [sortBy, setSortBy] = useState('rating-desc');
   const [hero, setHero] = useState<Movie | null>(null);
   const [rows, setRows] = useState<LoadedRow[]>([]);
   const [toast, setToast] = useState('');
@@ -174,10 +174,26 @@ export default function DiscoverPage(): JSX.Element {
   }
 
   const filteredRows = useMemo(() => {
-    return rows.map((row) => ({
-      ...row,
-      movies: sortMovies(row.movies, sortBy).filter((movie) => movieIsAvailable(movie, activeServices))
-    }));
+    const seen = new Set<string>();
+    return rows
+      .map((row) => {
+        const movies = sortMovies(row.movies, sortBy)
+          .filter((movie) => movieIsAvailable(movie, activeServices))
+          .filter((movie) => {
+            if (seen.has(movie.id)) {
+              return false;
+            }
+            seen.add(movie.id);
+            return true;
+          })
+          .slice(0, 20);
+
+        return {
+          ...row,
+          movies
+        };
+      })
+      .filter((row) => row.movies.length > 0);
   }, [rows, activeServices, sortBy]);
 
   const totalCount = useMemo(() => rows.reduce((acc, row) => acc + row.movies.length, 0), [rows]);
