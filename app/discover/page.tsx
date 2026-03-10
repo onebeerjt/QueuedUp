@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import FilterBar from '@/app/components/FilterBar';
 import MovieSpotlight from '@/app/components/MovieSpotlight';
 import DiscoverRow from '@/app/components/discover/DiscoverRow';
-import { flattenRows, movieIsAvailable, sortMovies } from '@/lib/discovery';
+import { dedupeMovies, movieIsAvailable, sortMovies } from '@/lib/discovery';
 import { buildTonightPack } from '@/lib/recommendation-rules';
 import type { Movie } from '@/types/movie';
 
@@ -200,8 +200,16 @@ export default function DiscoverPage(): JSX.Element {
   const visibleCount = useMemo(() => filteredRows.reduce((acc, row) => acc + row.movies.length, 0), [filteredRows]);
 
   const tonightPack = useMemo(() => {
-    const connected = flattenRows(filteredRows);
-    return buildTonightPack(hero, connected);
+    const coreRows = filteredRows.filter(
+      (row) => row.key.startsWith('director-') || row.key.startsWith('actor-')
+    );
+    const similarRows = filteredRows.filter((row) => row.key.startsWith('similar-'));
+
+    const coreCandidates = dedupeMovies(coreRows.flatMap((row) => row.movies));
+    const fallbackCandidates = dedupeMovies([...coreCandidates, ...similarRows.flatMap((row) => row.movies)]);
+    const candidates = coreCandidates.length >= 6 ? coreCandidates : fallbackCandidates;
+
+    return buildTonightPack(hero, candidates);
   }, [filteredRows, hero]);
 
   useEffect(() => {
