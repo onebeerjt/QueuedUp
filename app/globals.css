@@ -43,6 +43,38 @@ p {
   min-height: 100vh;
 }
 
+.homeNavCard {
+  max-width: 980px;
+  margin: 8px auto 12px;
+  border: 1px solid #2a2a35;
+  border-radius: 14px;
+  background: linear-gradient(130deg, #12121a 0%, #1a1830 100%);
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.homeNavCard h2 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.homeNavCard p {
+  color: #c4c1d4;
+  font-size: 13px;
+}
+
+.homeNavEyebrow {
+  color: #a8a5ba !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
 .pastePanel {
   background: rgba(24, 24, 28, 0.9);
   border-radius: 16px;
@@ -992,6 +1024,11 @@ p {
 }
 
 @media (max-width: 900px) {
+  .homeNavCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .filterRow2 {
     align-items: flex-start;
     flex-direction: column;

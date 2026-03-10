@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
@@ -240,6 +241,17 @@ export default function HomePage(): JSX.Element {
 
   return (
     <main className="page">
+      <section className="homeNavCard">
+        <div>
+          <p className="homeNavEyebrow">New</p>
+          <h2>Connected Discovery</h2>
+          <p>Search one movie and get connected films you can stream tonight.</p>
+        </div>
+        <Link href="/discover" className="primaryButton" style={{ textDecoration: 'none', display: 'inline-flex' }}>
+          Open Discover
+        </Link>
+      </section>
+
       <PastePanel
         hidden={panelHidden}
         loading={loading}
