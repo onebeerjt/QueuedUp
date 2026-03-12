@@ -945,6 +945,199 @@ p {
   line-height: 1.3;
 }
 
+.discoverActions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dynamicSectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.pathRow {
+  margin-top: 18px;
+}
+
+.pathRail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pathCard {
+  width: 170px;
+  flex: 0 0 auto;
+  border: 1px solid #2c2c39;
+  border-radius: 12px;
+  background: #14141d;
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  text-align: left;
+}
+
+.pathStep {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(10, 10, 14, 0.9);
+  border: 1px solid #353546;
+  border-radius: 999px;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pathPoster,
+.pathPosterFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.pathPosterFallback {
+  background: #1d1d28;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.pathMeta {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pathMeta strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.pathMeta small {
+  color: #bcb9cb;
+  font-size: 11px;
+}
+
+.searchHero {
+  margin: 12px 0 18px;
+}
+
+.searchHeroGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 12px;
+}
+
+.searchHeroPanel {
+  border: 1px solid #2a2a35;
+  border-radius: 14px;
+  background: #14141d;
+  padding: 14px;
+}
+
+.searchHeroPanel h3 {
+  margin-bottom: 4px;
+}
+
+.searchHeroRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.journeyMiniList {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.journeyMiniCard {
+  border: 1px solid #2d2d3b;
+  border-radius: 10px;
+  background: #1a1a25;
+  padding: 10px;
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.journeyMiniCard small {
+  color: #9a97ad;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.homeStarterWrap {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.homeStarterRow h3 {
+  margin-bottom: 6px;
+}
+
+.homeSeedRail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.homeSeedChip {
+  display: inline-flex;
+  border: 1px solid #303040;
+  border-radius: 999px;
+  color: #dedbea;
+  text-decoration: none;
+  background: #1a1a24;
+  padding: 8px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.coursesGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.courseCard {
+  border: 1px solid #2d2d3a;
+  border-radius: 12px;
+  background: #151520;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.courseCard h3 {
+  font-size: 19px;
+}
+
+.courseCard p {
+  color: #c7c4d6;
+}
+
 .blindSpotList {
   display: grid;
   gap: 10px;
@@ -1024,6 +1217,18 @@ p {
 }
 
 @media (max-width: 900px) {
+  .searchHeroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchHeroRow {
+    grid-template-columns: 1fr;
+  }
+
+  .coursesGrid {
+    grid-template-columns: 1fr;
+  }
+
   .homeNavCard {
     flex-direction: column;
     align-items: flex-start;

@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import CourseCard from '@/app/components/courses/CourseCard';
 import FilterBar from '@/app/components/FilterBar';
+import HomepageStarterRow from '@/app/components/home/HomepageStarterRow';
 import MovieGrid from '@/app/components/MovieGrid';
 import MovieSpotlight from '@/app/components/MovieSpotlight';
 import PastePanel from '@/app/components/PastePanel';
 import ProgressBar from '@/app/components/ProgressBar';
+import { COURSES, STARTER_ROWS } from '@/lib/course-data';
 import { normalizeServiceName } from '@/lib/services';
 import { decodeShareState, encodeShareState } from '@/lib/utils';
 import type { Movie } from '@/types/movie';
@@ -51,6 +54,9 @@ export default function HomePage(): JSX.Element {
   const [toast, setToast] = useState('');
   const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('spotlight');
+  const [discoverSeedInput, setDiscoverSeedInput] = useState('');
+  const [publicUsername, setPublicUsername] = useState('');
+  const [publicListUrl, setPublicListUrl] = useState('');
 
   const shareLoadedRef = useRef(false);
   const progressTimerRef = useRef<number | null>(null);
@@ -252,6 +258,85 @@ export default function HomePage(): JSX.Element {
         </Link>
       </section>
 
+      <section className="searchHero">
+        <div className="searchHeroGrid">
+          <div className="searchHeroPanel">
+            <h3>Search / Input Hero</h3>
+            <p className="discoverHint">Find something great to stream tonight.</p>
+
+            <label className="panelHelper" htmlFor="movie-seed-home">Search Movie</label>
+            <div className="searchHeroRow">
+              <input
+                id="movie-seed-home"
+                className="discoverInput"
+                placeholder="Pulp Fiction"
+                value={discoverSeedInput}
+                onChange={(event) => setDiscoverSeedInput(event.target.value)}
+              />
+              <Link
+                href={`/discover${discoverSeedInput.trim() ? `?seed=${encodeURIComponent(discoverSeedInput.trim())}` : ''}`}
+                className="primaryButton"
+                style={{ textDecoration: 'none', display: 'inline-flex' }}
+              >
+                Explore
+              </Link>
+            </div>
+
+            <label className="panelHelper" htmlFor="public-username-home">Public Letterboxd Username</label>
+            <div className="searchHeroRow">
+              <input
+                id="public-username-home"
+                className="discoverInput"
+                placeholder="username"
+                value={publicUsername}
+                onChange={(event) => setPublicUsername(event.target.value)}
+              />
+              <Link
+                href={`/blindspots${publicUsername.trim() ? `?username=${encodeURIComponent(publicUsername.trim())}` : ''}`}
+                className="panelTab active"
+                style={{ textDecoration: 'none', display: 'inline-flex' }}
+              >
+                Analyze
+              </Link>
+            </div>
+
+            <label className="panelHelper" htmlFor="public-list-home">Public List URL</label>
+            <div className="searchHeroRow">
+              <input
+                id="public-list-home"
+                className="discoverInput"
+                placeholder="https://letterboxd.com/username/list/..."
+                value={publicListUrl}
+                onChange={(event) => setPublicListUrl(event.target.value)}
+              />
+              <Link
+                href={`/blindspots${publicListUrl.trim() ? `?url=${encodeURIComponent(publicListUrl.trim())}` : ''}`}
+                className="panelTab active"
+                style={{ textDecoration: 'none', display: 'inline-flex' }}
+              >
+                Blind Spots
+              </Link>
+            </div>
+          </div>
+
+          <div className="searchHeroPanel">
+            <h3>Discovery Journeys</h3>
+            <p className="discoverHint">Browse curated courses and jump into a route.</p>
+            <div className="journeyMiniList">
+              {COURSES.slice(0, 4).map((course) => (
+                <Link key={course.slug} href={`/courses/${course.slug}`} className="journeyMiniCard">
+                  <strong>{course.title}</strong>
+                  <small>{course.theme}</small>
+                </Link>
+              ))}
+            </div>
+            <Link href="/courses" className="primaryButton" style={{ textDecoration: 'none', display: 'inline-flex' }}>
+              Browse All Courses
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <PastePanel
         hidden={panelHidden}
         loading={loading}
@@ -260,6 +345,18 @@ export default function HomePage(): JSX.Element {
         onSubmitTitles={handleLoadTitles}
         onSubmitLetterboxd={handleLetterboxdImport}
       />
+
+      <section className="homeStarterWrap">
+        {STARTER_ROWS.map((row) => (
+          <HomepageStarterRow key={row.title} title={row.title} subtitle={row.subtitle} seeds={row.seedTitles} />
+        ))}
+      </section>
+
+      <section className="coursesGrid">
+        {COURSES.map((course) => (
+          <CourseCard key={course.slug} course={course} />
+        ))}
+      </section>
 
       {(movies.length > 0 || loading) && (
         <FilterBar

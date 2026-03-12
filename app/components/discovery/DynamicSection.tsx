@@ -1,0 +1,39 @@
+'use client';
+
+import type { Movie } from '@/types/movie';
+
+interface DynamicSectionProps {
+  title: string;
+  subtitle: string;
+  movies: Movie[];
+  onSelect: (movie: Movie) => void;
+}
+
+export default function DynamicSection({ title, subtitle, movies, onSelect }: DynamicSectionProps): JSX.Element | null {
+  if (!movies.length) {
+    return null;
+  }
+
+  return (
+    <section className="discoverRow">
+      <div className="dynamicSectionHead">
+        <h3 className="discoverRowTitle">{title}</h3>
+        <p className="discoverHint">{subtitle}</p>
+      </div>
+      <div className="discoverRail" role="list">
+        {movies.map((movie) => (
+          <button key={`${title}-${movie.id}`} type="button" className="discoverTile" role="listitem" onClick={() => onSelect(movie)}>
+            {movie.poster ? (
+              <img src={movie.poster} alt={movie.title} className="discoverTilePoster" loading="lazy" />
+            ) : (
+              <div className="discoverTileFallback">{movie.title}</div>
+            )}
+            <div className="discoverTileMeta">
+              <span className="discoverTileTitle">{movie.title}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}

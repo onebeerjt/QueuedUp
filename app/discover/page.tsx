@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import FilterBar from '@/app/components/FilterBar';
-import MovieSpotlight from '@/app/components/MovieSpotlight';
+import DiscoveryHero from '@/app/components/discovery/DiscoveryHero';
+import DynamicSection from '@/app/components/discovery/DynamicSection';
+import PathRow from '@/app/components/discovery/PathRow';
 import DiscoverRow from '@/app/components/discover/DiscoverRow';
 import { dedupeMovies, movieIsAvailable, sortMovies } from '@/lib/discovery';
-import { buildTonightPack } from '@/lib/recommendation-rules';
+import { type LoadedRowLike, generateDiscoverySections } from '@/lib/path-generator';
+import { nextSeed } from '@/lib/seeded-variation';
 import type { Movie } from '@/types/movie';
 
 interface SearchResult {
@@ -67,6 +70,8 @@ export default function DiscoverPage(): JSX.Element {
   const [hero, setHero] = useState<Movie | null>(null);
   const [rows, setRows] = useState<LoadedRow[]>([]);
   const [toast, setToast] = useState('');
+  const [variationSeed, setVariationSeed] = useState(1);
+
   const bootedFromQuery = useRef(false);
 
   async function handleSearchInput(value: string): Promise<void> {
@@ -107,30 +112,31 @@ export default function DiscoverPage(): JSX.Element {
     return payload as Movie[];
   }
 
-  async function loadDiscover(seed: SearchResult): Promise<void> {
+  async function loadDiscover(seedMovie: SearchResult, initialSeed = 1): Promise<void> {
     setLoading(true);
     setResults([]);
-    setQuery(seed.title);
+    setQuery(seedMovie.title);
 
     try {
-      const contextRes = await fetch(`/api/discover-context?tmdbId=${seed.id}`);
+      const contextRes = await fetch(`/api/discover-context?tmdbId=${seedMovie.id}`);
       const contextPayload = (await contextRes.json()) as DiscoverContextResponse | { error?: string };
       if (!contextRes.ok) {
         throw new Error((contextPayload as { error?: string }).error || 'Failed to load context');
       }
 
       const context = contextPayload as DiscoverContextResponse;
-
       const [heroMovie] = await fetchMoviesByTitles([context.hero.title]);
       setHero(heroMovie || null);
 
       const loaded = await mapWithConcurrency(context.rows, 5, async (row) => {
         const movies = await fetchMoviesByTitles(row.titles);
-        const deduped = movies.filter((movie, index, arr) => arr.findIndex((m) => m.id === movie.id) === index);
+        const deduped = dedupeMovies(movies);
         return { key: row.key, label: row.label, movies: deduped };
       });
 
       setRows(loaded);
+      setVariationSeed(initialSeed);
+      setTab('discovery');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load discover';
       setToast(message);
@@ -155,6 +161,7 @@ export default function DiscoverPage(): JSX.Element {
     const next = rememberedServices.length ? rememberedServices : activeServices;
     setActiveServices(next);
     setSortBy('rating-desc');
+    setTab('tonight');
     document.getElementById('discover-rows')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -163,6 +170,7 @@ export default function DiscoverPage(): JSX.Element {
     if (hero?.title) {
       url.searchParams.set('seed', hero.title);
     }
+    url.searchParams.set('v', String(variationSeed));
     try {
       await navigator.clipboard.writeText(url.toString());
       setToast('Link copied!');
@@ -196,21 +204,13 @@ export default function DiscoverPage(): JSX.Element {
       .filter((row) => row.movies.length > 0);
   }, [rows, activeServices, sortBy]);
 
+  const generated = useMemo(
+    () => generateDiscoverySections(hero, filteredRows as LoadedRowLike[], variationSeed),
+    [hero, filteredRows, variationSeed]
+  );
+
   const totalCount = useMemo(() => rows.reduce((acc, row) => acc + row.movies.length, 0), [rows]);
   const visibleCount = useMemo(() => filteredRows.reduce((acc, row) => acc + row.movies.length, 0), [filteredRows]);
-
-  const tonightPack = useMemo(() => {
-    const coreRows = filteredRows.filter(
-      (row) => row.key.startsWith('director-') || row.key.startsWith('actor-')
-    );
-    const similarRows = filteredRows.filter((row) => row.key.startsWith('similar-'));
-
-    const coreCandidates = dedupeMovies(coreRows.flatMap((row) => row.movies));
-    const fallbackCandidates = dedupeMovies([...coreCandidates, ...similarRows.flatMap((row) => row.movies)]);
-    const candidates = coreCandidates.length >= 6 ? coreCandidates : fallbackCandidates;
-
-    return buildTonightPack(hero, candidates);
-  }, [filteredRows, hero]);
 
   useEffect(() => {
     if (bootedFromQuery.current || typeof window === 'undefined') {
@@ -220,6 +220,10 @@ export default function DiscoverPage(): JSX.Element {
 
     const url = new URL(window.location.href);
     const seed = (url.searchParams.get('seed') || '').trim();
+    const seedValue = Number(url.searchParams.get('v') || '1');
+    if (seedValue > 0 && Number.isFinite(seedValue)) {
+      setVariationSeed(seedValue);
+    }
     if (!seed) {
       return;
     }
@@ -231,18 +235,23 @@ export default function DiscoverPage(): JSX.Element {
         const payload = (await res.json()) as { results?: SearchResult[] };
         const first = payload.results?.[0];
         if (first) {
-          await loadDiscover(first);
+          await loadDiscover(first, seedValue > 0 && Number.isFinite(seedValue) ? seedValue : 1);
         }
       } catch {
-        // Intentionally ignore boot load failures to keep page interactive.
+        // Keep page interactive if initial query bootstrap fails.
       }
     })();
   }, []);
+
+  function regenerate(): void {
+    setVariationSeed((prev) => nextSeed(prev));
+  }
 
   return (
     <main className="page">
       <section className="discoverSearch">
         <h1>Connected Discovery</h1>
+        <p className="discoverHint">Search a movie and explore connected films you can stream tonight.</p>
         <input
           type="text"
           value={query}
@@ -306,19 +315,41 @@ export default function DiscoverPage(): JSX.Element {
         </button>
       </div>
 
-      {hero ? <MovieSpotlight movie={hero} unavailable={!movieIsAvailable(hero, activeServices)} /> : null}
+      <DiscoveryHero
+        movie={hero}
+        unavailable={hero ? !movieIsAvailable(hero, activeServices) : false}
+        onShowTonight={() => setTab('tonight')}
+        onShowDouble={() => {
+          setTab('tonight');
+          document.getElementById('double-feature')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+        onShowTriple={() => {
+          setTab('tonight');
+          document.getElementById('triple-feature')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+        onRegenerate={regenerate}
+      />
 
       {tab === 'discovery' ? (
         <section id="discover-rows" className="discoverRowsWrap">
-          {filteredRows.map((row) => (
-            <DiscoverRow
-              key={row.key}
-              title={row.label}
-              movies={row.movies}
-              onSelect={(movie) => {
-                setHero(movie);
-                document.getElementById('discover-rows')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+          {generated.dynamicSections.map((section) => (
+            <DynamicSection
+              key={`${section.key}-${variationSeed}`}
+              title={section.title}
+              subtitle={section.subtitle}
+              movies={section.movies}
+              onSelect={setHero}
+            />
+          ))}
+
+          <h3 className="discoverRowTitle">Rabbit Hole Paths</h3>
+          {generated.paths.map((path) => (
+            <PathRow
+              key={`${path.title}-${variationSeed}`}
+              title={path.title}
+              routeLabel={path.routeLabel}
+              movies={path.movies}
+              onSelect={setHero}
             />
           ))}
         </section>
@@ -326,19 +357,18 @@ export default function DiscoverPage(): JSX.Element {
 
       {tab === 'tonight' ? (
         <section className="discoverRowsWrap">
-          <h3 className="discoverRowTitle">Pick Something Tonight</h3>
-          {tonightPack.pick ? (
-            <DiscoverRow title="Top pick" movies={[tonightPack.pick]} onSelect={setHero} />
+          <h3 className="discoverRowTitle">Best Follow-Up</h3>
+          {generated.featuredPick ? (
+            <DiscoverRow title="Top pick" movies={[generated.featuredPick]} onSelect={setHero} />
           ) : (
             <p className="discoverHint">No streamable recommendation found for current filters.</p>
           )}
 
-          <h3 className="discoverRowTitle">Build a Double Feature</h3>
-          <DiscoverRow title="Double feature" movies={tonightPack.doubleFeature} onSelect={setHero} />
+          <h3 id="double-feature" className="discoverRowTitle">Perfect Double Feature</h3>
+          <DiscoverRow title="Double feature" movies={generated.doubleFeature} onSelect={setHero} />
 
-          <h3 className="discoverRowTitle">Build a Triple Feature</h3>
-          <p className="discoverHint">{tonightPack.label}</p>
-          <DiscoverRow title="Triple feature" movies={tonightPack.tripleFeature} onSelect={setHero} />
+          <h3 id="triple-feature" className="discoverRowTitle">Triple Feature Tonight</h3>
+          <DiscoverRow title="Triple feature" movies={generated.tripleFeature} onSelect={setHero} />
         </section>
       ) : null}
 
