@@ -14,8 +14,8 @@ interface BlindSpotCandidate {
   reason: string;
 }
 
-const MAX_SOURCE_TITLES = 120;
-const MAX_RECOMMENDATIONS = 60;
+const MAX_SOURCE_TITLES = 150;
+const MAX_RECOMMENDATIONS = 100;
 
 export default function BlindSpotsPage(): JSX.Element {
   const [username, setUsername] = useState('');

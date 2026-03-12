@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 
 interface SearchResult {
   id: number;
@@ -119,7 +120,7 @@ function reasonFor(movie: SearchResult, knownGenreIds: Set<number>, knownDecades
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body = (await request.json()) as { titles?: string[]; maxCandidates?: number };
-    const maxCandidates = Math.min(Math.max(Number(body.maxCandidates) || 60, 10), 120);
+    const maxCandidates = Math.min(Math.max(Number(body.maxCandidates) || 100, 10), 150);
     const titles = Array.isArray(body.titles)
       ? Array.from(new Set(body.titles.map((title) => title.trim()).filter(Boolean))).slice(0, 30)
       : [];
@@ -128,69 +129,58 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'titles are required' }, { status: 400 });
     }
 
-    const seeds = (await Promise.all(titles.map((title) => resolveSeed(title)))).filter(
-      (item): item is SearchResult => Boolean(item)
-    );
+    const cacheKey = titles.map((title) => title.toLowerCase()).sort().join('\u0001');
+    const scored = await getCachedBlindSpotCandidates(cacheKey, maxCandidates);
 
-    if (!seeds.length) {
-      return NextResponse.json({ candidates: [] });
+    return NextResponse.json({ candidates: scored });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to build blind spots context';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function buildBlindSpotCandidates(titles: string[], maxCandidates: number): Promise<Array<{ title: string; reason: string }>> {
+  const seeds = (await Promise.all(titles.map((title) => resolveSeed(title)))).filter(
+    (item): item is SearchResult => Boolean(item)
+  );
+
+  if (!seeds.length) {
+    return [];
+  }
+
+  const knownIds = new Set<number>(seeds.map((seed) => seed.id));
+  const knownGenreIds = new Set<number>();
+  const knownDecades = new Set<number>();
+  const knownDirectors = new Set<number>();
+
+  const candidatesMap = new Map<number, SearchResult>();
+  const candidateDirectors = new Map<number, Set<number>>();
+
+  for (const seed of seeds) {
+    const year = seed.release_date ? Number(seed.release_date.slice(0, 4)) : 0;
+    if (year) {
+      knownDecades.add(yearToDecade(year));
     }
+    (seed.genre_ids || []).forEach((id) => knownGenreIds.add(id));
 
-    const knownIds = new Set<number>(seeds.map((seed) => seed.id));
-    const knownGenreIds = new Set<number>();
-    const knownDecades = new Set<number>();
-    const knownDirectors = new Set<number>();
+    const [details, credits, similar] = await Promise.all([
+      tmdbFetch<DetailsResponse>(`/movie/${seed.id}`, { language: 'en-US' }),
+      tmdbFetch<CreditsResponse>(`/movie/${seed.id}/credits`, { language: 'en-US' }),
+      tmdbFetch<SimilarResponse>(`/movie/${seed.id}/similar`, { language: 'en-US', page: '1' })
+    ]);
 
-    const candidatesMap = new Map<number, SearchResult>();
-    const candidateDirectors = new Map<number, Set<number>>();
+    (details.genres || []).forEach((genre) => knownGenreIds.add(genre.id));
+    const director = credits.crew.find((person) => person.job === 'Director');
+    if (director) {
+      knownDirectors.add(director.id);
+      const directorCredits = await tmdbFetch<PersonCreditsResponse>(`/person/${director.id}/movie_credits`, {
+        language: 'en-US'
+      });
 
-    for (const seed of seeds) {
-      const year = seed.release_date ? Number(seed.release_date.slice(0, 4)) : 0;
-      if (year) {
-        knownDecades.add(yearToDecade(year));
-      }
-      (seed.genre_ids || []).forEach((id) => knownGenreIds.add(id));
-
-      const [details, credits, similar] = await Promise.all([
-        tmdbFetch<DetailsResponse>(`/movie/${seed.id}`, { language: 'en-US' }),
-        tmdbFetch<CreditsResponse>(`/movie/${seed.id}/credits`, { language: 'en-US' }),
-        tmdbFetch<SimilarResponse>(`/movie/${seed.id}/similar`, { language: 'en-US', page: '1' })
-      ]);
-
-      (details.genres || []).forEach((genre) => knownGenreIds.add(genre.id));
-      const director = credits.crew.find((person) => person.job === 'Director');
-      if (director) {
-        knownDirectors.add(director.id);
-        const directorCredits = await tmdbFetch<PersonCreditsResponse>(`/person/${director.id}/movie_credits`, {
-          language: 'en-US'
-        });
-
-        (directorCredits.crew || [])
-          .filter((item) => item.job === 'Director')
-          .slice(0, 20)
-          .forEach((item) => {
-            if (!knownIds.has(item.id) && item.title) {
-              candidatesMap.set(item.id, {
-                id: item.id,
-                title: item.title,
-                release_date: item.release_date,
-                genre_ids: item.genre_ids,
-                vote_average: item.vote_average,
-                popularity: item.popularity
-              });
-              if (!candidateDirectors.has(item.id)) {
-                candidateDirectors.set(item.id, new Set<number>());
-              }
-              candidateDirectors.get(item.id)?.add(director.id);
-            }
-          });
-      }
-
-      for (const actor of credits.cast.slice(0, 6)) {
-        const actorCredits = await tmdbFetch<PersonCreditsResponse>(`/person/${actor.id}/movie_credits`, {
-          language: 'en-US'
-        });
-        (actorCredits.cast || []).slice(0, 12).forEach((item) => {
+      (directorCredits.crew || [])
+        .filter((item) => item.job === 'Director')
+        .slice(0, 20)
+        .forEach((item) => {
           if (!knownIds.has(item.id) && item.title) {
             candidatesMap.set(item.id, {
               id: item.id,
@@ -200,36 +190,61 @@ export async function POST(request: Request): Promise<NextResponse> {
               vote_average: item.vote_average,
               popularity: item.popularity
             });
+            if (!candidateDirectors.has(item.id)) {
+              candidateDirectors.set(item.id, new Set<number>());
+            }
+            candidateDirectors.get(item.id)?.add(director.id);
           }
         });
-      }
+    }
 
-      (similar.results || []).slice(0, 20).forEach((item) => {
+    for (const actor of credits.cast.slice(0, 6)) {
+      const actorCredits = await tmdbFetch<PersonCreditsResponse>(`/person/${actor.id}/movie_credits`, {
+        language: 'en-US'
+      });
+      (actorCredits.cast || []).slice(0, 12).forEach((item) => {
         if (!knownIds.has(item.id) && item.title) {
-          candidatesMap.set(item.id, item);
+          candidatesMap.set(item.id, {
+            id: item.id,
+            title: item.title,
+            release_date: item.release_date,
+            genre_ids: item.genre_ids,
+            vote_average: item.vote_average,
+            popularity: item.popularity
+          });
         }
       });
     }
 
-    const scored = Array.from(candidatesMap.values())
-      .filter((movie) => (movie.vote_average ?? 0) >= 6)
-      .sort((a, b) => {
-        const aDirectors = candidateDirectors.get(a.id) ?? new Set<number>();
-        const bDirectors = candidateDirectors.get(b.id) ?? new Set<number>();
-
-        const aScore = scoreCandidate(a, knownGenreIds, knownDecades, knownDirectors, aDirectors);
-        const bScore = scoreCandidate(b, knownGenreIds, knownDecades, knownDirectors, bDirectors);
-        return bScore - aScore;
-      })
-      .slice(0, maxCandidates)
-      .map((movie) => ({
-        title: movie.title,
-        reason: reasonFor(movie, knownGenreIds, knownDecades)
-      }));
-
-    return NextResponse.json({ candidates: scored });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to build blind spots context';
-    return NextResponse.json({ error: message }, { status: 500 });
+    (similar.results || []).slice(0, 20).forEach((item) => {
+      if (!knownIds.has(item.id) && item.title) {
+        candidatesMap.set(item.id, item);
+      }
+    });
   }
+
+  return Array.from(candidatesMap.values())
+    .filter((movie) => (movie.vote_average ?? 0) >= 6)
+    .sort((a, b) => {
+      const aDirectors = candidateDirectors.get(a.id) ?? new Set<number>();
+      const bDirectors = candidateDirectors.get(b.id) ?? new Set<number>();
+
+      const aScore = scoreCandidate(a, knownGenreIds, knownDecades, knownDirectors, aDirectors);
+      const bScore = scoreCandidate(b, knownGenreIds, knownDecades, knownDirectors, bDirectors);
+      return bScore - aScore;
+    })
+    .slice(0, maxCandidates)
+    .map((movie) => ({
+      title: movie.title,
+      reason: reasonFor(movie, knownGenreIds, knownDecades)
+    }));
 }
+
+const getCachedBlindSpotCandidates = unstable_cache(
+  async (cacheKey: string, maxCandidates: number): Promise<Array<{ title: string; reason: string }>> => {
+    const titles = cacheKey.split('\u0001').filter(Boolean);
+    return buildBlindSpotCandidates(titles, maxCandidates);
+  },
+  ['blindspots-context-v2'],
+  { revalidate: 21600 }
+);

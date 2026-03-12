@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 
 import { extractTitlesFromLetterboxdHtml, getNextLetterboxdPageUrl } from '@/lib/letterboxd';
 
@@ -25,6 +26,12 @@ async function collectTitlesFromUrl(startUrl: string, maxPages: number): Promise
 
   return Array.from(titles);
 }
+
+const collectTitlesFromUrlCached = unstable_cache(
+  async (startUrl: string, maxPages: number): Promise<string[]> => collectTitlesFromUrl(startUrl, maxPages),
+  ['letterboxd-public-v2'],
+  { revalidate: 21600 }
+);
 
 function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@/, '').replace(/\/+$/, '');
@@ -61,7 +68,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       if (!isLetterboxdUrl(url)) {
         return NextResponse.json({ error: 'URL must be from letterboxd.com' }, { status: 400 });
       }
-      const titles = await collectTitlesFromUrl(url, 4);
+      const titles = await collectTitlesFromUrlCached(url, 4);
       const privateMessage = likelyPrivateOrUnavailable(url, titles);
       return NextResponse.json({
         mode: 'public-list-url',
@@ -77,9 +84,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (username) {
       const base = `https://letterboxd.com/${username}/`;
       const [films, watchlist, likes] = await Promise.all([
-        collectTitlesFromUrl(`${base}films/`, 2),
-        collectTitlesFromUrl(`${base}watchlist/`, 2),
-        collectTitlesFromUrl(`${base}likes/films/`, 1)
+        collectTitlesFromUrlCached(`${base}films/`, 2),
+        collectTitlesFromUrlCached(`${base}watchlist/`, 2),
+        collectTitlesFromUrlCached(`${base}likes/films/`, 1)
       ]);
 
       const merged = Array.from(new Set([...films, ...watchlist, ...likes]));
