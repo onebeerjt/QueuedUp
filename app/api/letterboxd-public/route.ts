@@ -39,6 +39,18 @@ function isLetterboxdUrl(url: string): boolean {
   }
 }
 
+function likelyPrivateOrUnavailable(url: string, titles: string[]): string | null {
+  if (titles.length) {
+    return null;
+  }
+
+  const lower = url.toLowerCase();
+  if (lower.includes('/list/') || lower.includes('/watchlist')) {
+    return 'This Letterboxd page appears private or unavailable to public scraping. Use a public list/profile URL.';
+  }
+  return null;
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const url = (searchParams.get('url') || '').trim();
@@ -50,12 +62,15 @@ export async function GET(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: 'URL must be from letterboxd.com' }, { status: 400 });
       }
       const titles = await collectTitlesFromUrl(url, 4);
+      const privateMessage = likelyPrivateOrUnavailable(url, titles);
       return NextResponse.json({
         mode: 'public-list-url',
         titles,
-        message: titles.length
-          ? null
-          : 'Couldn’t read enough public data from this profile. Try a public list URL or search a movie instead.'
+        message:
+          privateMessage ||
+          (titles.length
+            ? null
+            : 'Couldn’t read enough public data from this profile. Try a public list URL or search a movie instead.')
       });
     }
 

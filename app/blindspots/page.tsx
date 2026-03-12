@@ -14,6 +14,9 @@ interface BlindSpotCandidate {
   reason: string;
 }
 
+const MAX_SOURCE_TITLES = 120;
+const MAX_RECOMMENDATIONS = 60;
+
 export default function BlindSpotsPage(): JSX.Element {
   const [username, setUsername] = useState('');
   const [listUrl, setListUrl] = useState('');
@@ -38,14 +41,14 @@ export default function BlindSpotsPage(): JSX.Element {
       const ctxRes = await fetch('/api/blindspots-context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titles })
+        body: JSON.stringify({ titles, maxCandidates: MAX_RECOMMENDATIONS })
       });
       const ctxPayload = (await ctxRes.json()) as { candidates?: BlindSpotCandidate[]; error?: string };
       if (!ctxRes.ok) {
         throw new Error(ctxPayload.error || 'Failed to build blind spots');
       }
 
-      const candidates = (ctxPayload.candidates || []).slice(0, 20);
+      const candidates = (ctxPayload.candidates || []).slice(0, MAX_RECOMMENDATIONS);
       const titlesToFetch = candidates.map((candidate) => candidate.title);
       const movieRes = await fetch('/api/fetch-movies', {
         method: 'POST',
@@ -93,7 +96,7 @@ export default function BlindSpotsPage(): JSX.Element {
       throw new Error(payload.error || 'Failed to read public Letterboxd data');
     }
 
-    const titles = (payload.titles || []).slice(0, 20);
+    const titles = (payload.titles || []).slice(0, MAX_SOURCE_TITLES);
     if (!titles.length) {
       throw new Error(
         payload.message ||
@@ -185,7 +188,7 @@ export default function BlindSpotsPage(): JSX.Element {
           if (!res.ok) {
             throw new Error(payload.error || 'Failed to read public Letterboxd data');
           }
-          const titles = (payload.titles || []).slice(0, 20);
+          const titles = (payload.titles || []).slice(0, MAX_SOURCE_TITLES);
           if (titles.length) {
             await runBlindSpots(titles);
           }

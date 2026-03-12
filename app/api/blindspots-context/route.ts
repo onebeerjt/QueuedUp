@@ -118,9 +118,10 @@ function reasonFor(movie: SearchResult, knownGenreIds: Set<number>, knownDecades
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const body = (await request.json()) as { titles?: string[] };
+    const body = (await request.json()) as { titles?: string[]; maxCandidates?: number };
+    const maxCandidates = Math.min(Math.max(Number(body.maxCandidates) || 60, 10), 120);
     const titles = Array.isArray(body.titles)
-      ? Array.from(new Set(body.titles.map((title) => title.trim()).filter(Boolean))).slice(0, 8)
+      ? Array.from(new Set(body.titles.map((title) => title.trim()).filter(Boolean))).slice(0, 30)
       : [];
 
     if (!titles.length) {
@@ -220,7 +221,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const bScore = scoreCandidate(b, knownGenreIds, knownDecades, knownDirectors, bDirectors);
         return bScore - aScore;
       })
-      .slice(0, 40)
+      .slice(0, maxCandidates)
       .map((movie) => ({
         title: movie.title,
         reason: reasonFor(movie, knownGenreIds, knownDecades)
